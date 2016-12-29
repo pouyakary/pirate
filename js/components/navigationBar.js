@@ -10,15 +10,19 @@ const cx = require('../lib/classSet')
 const Button = require('./button')
 const UrlBar = require('./urlBar')
 const windowActions = require('../actions/windowActions')
+const appActions = require('../actions/appActions')
 const siteTags = require('../constants/siteTags')
 const messages = require('../constants/messages')
 const settings = require('../constants/settings')
-const ipc = global.require('electron').ipcRenderer
+const ipc = require('electron').ipcRenderer
 const {isSourceAboutUrl} = require('../lib/appUrlUtil')
+const AddEditBookmarkHanger = require('../../app/renderer/components/addEditBookmarkHanger')
 const siteUtil = require('../state/siteUtil')
 const eventUtil = require('../lib/eventUtil')
 const getSetting = require('../settings').getSetting
 const windowStore = require('../stores/windowStore')
+const contextMenus = require('../contextMenus')
+const LongPressButton = require('./longPressButton')
 
 class NavigationBar extends ImmutableComponent {
   constructor () {
@@ -26,6 +30,7 @@ class NavigationBar extends ImmutableComponent {
     this.onToggleBookmark = this.onToggleBookmark.bind(this)
     this.onStop = this.onStop.bind(this)
     this.onReload = this.onReload.bind(this)
+    this.onReloadLongPress = this.onReloadLongPress.bind(this)
     this.onNoScript = this.onNoScript.bind(this)
   }
 
@@ -38,17 +43,27 @@ class NavigationBar extends ImmutableComponent {
   }
 
   onToggleBookmark () {
-    // trigger the AddEditBookmark modal; saving/deleting takes place there
-    const siteDetail = siteUtil.getDetailFromFrame(this.activeFrame, siteTags.BOOKMARK)
-    windowActions.setBookmarkDetail(siteDetail, siteDetail)
+    const editing = this.bookmarked
+    // show the AddEditBookmarkHanger control; saving/deleting takes place there
+    let siteDetail = siteUtil.getDetailFromFrame(this.activeFrame, siteTags.BOOKMARK)
+    const siteIndex = siteUtil.getSiteIndex(this.props.sites, siteDetail)
+
+    if (siteIndex > 0) {
+      siteDetail = siteDetail.set('parentFolderId', this.props.sites.getIn([siteIndex]).get('parentFolderId'))
+    }
+    windowActions.setBookmarkDetail(siteDetail, siteDetail, null, editing, true)
   }
 
   onReload (e) {
     if (eventUtil.isForSecondaryAction(e)) {
-      ipc.emit(messages.SHORTCUT_ACTIVE_FRAME_CLONE, {}, { openInForeground: !!e.shiftKey })
+      appActions.tabCloned(this.activeFrame.get('tabId'), {active: !!e.shiftKey})
     } else {
       ipc.emit(messages.SHORTCUT_ACTIVE_FRAME_RELOAD)
     }
+  }
+
+  onReloadLongPress (target) {
+    contextMenus.onReloadContextMenu(target)
   }
 
   onHome () {
@@ -59,7 +74,17 @@ class NavigationBar extends ImmutableComponent {
   }
 
   onStop () {
-    ipc.emit(messages.SHORTCUT_ACTIVE_FRAME_STOP)
+    if (this.props.navbar.getIn(['urlbar', 'focused'])) {
+      windowActions.setUrlBarActive(false)
+      const shouldRenderSuggestions = this.props.navbar.getIn(['urlbar', 'suggestions', 'shouldRender']) === true
+      const suggestionList = this.props.navbar.getIn(['urlbar', 'suggestions', 'suggestionList'])
+      if (!shouldRenderSuggestions ||
+          // TODO: Once we take out suggestion generation from within URLBarSuggestions we can remove this check
+          // and put it in shouldRenderUrlBarSuggestions where it belongs.  See https://github.com/brave/browser-laptop/issues/3151
+          !suggestionList || suggestionList.size === 0) {
+        windowActions.setUrlBarSelected(true)
+      }
+    }
   }
 
   get bookmarked () {
@@ -73,6 +98,7 @@ class NavigationBar extends ImmutableComponent {
 
   get titleMode () {
     return this.props.mouseInTitlebar === false &&
+      !this.props.bookmarkDetail &&
       this.props.title &&
       !['about:blank', 'about:newtab'].includes(this.props.location) &&
       !this.loading &&
@@ -112,26 +138,56 @@ class NavigationBar extends ImmutableComponent {
       className={cx({
         titleMode: this.titleMode
       })}>
+      {
+        this.props.bookmarkDetail && this.props.bookmarkDetail.get('isBookmarkHanger')
+        ? <AddEditBookmarkHanger sites={this.props.sites}
+          currentDetail={this.props.bookmarkDetail.get('currentDetail')}
+          originalDetail={this.props.bookmarkDetail.get('originalDetail')}
+          destinationDetail={this.props.bookmarkDetail.get('destinationDetail')}
+          shouldShowLocation={this.props.bookmarkDetail.get('shouldShowLocation')}
+          withHomeButton={getSetting(settings.SHOW_HOME_BUTTON)}
+          />
+        : null
+      }
+      {
+        this.titleMode
+        ? null
+        : this.loading
+          ? <span className='navigationButtonContainer'>
+            <button data-l10n-id='stopButton'
+              className='navigationButton stopButton'
+              onClick={this.onStop} />
+          </span>
+          : <span className='navigationButtonContainer'>
+            <LongPressButton
+              l10nId='reloadButton'
+              className='navigationButton reloadButton'
+              onClick={this.onReload}
+              onLongPress={this.onReloadLongPress} />
+          </span>
+      }
+      {
+        !this.titleMode && getSetting(settings.SHOW_HOME_BUTTON)
+        ? <span className='navigationButtonContainer'>
+          <button data-l10n-id='homeButton'
+            className='navigationButton homeButton'
+            onClick={this.onHome} />
+        </span>
+        : null
+      }
       <div className='startButtons'>
         {
-          isSourceAboutUrl(this.props.location) || this.titleMode
-          ? <span className='browserButton' />
-          : this.loading
-            ? <Button iconClass='fa-times'
-              l10nId='stopButton'
-              className='navbutton stop-button'
-              onClick={this.onStop} />
-            : <Button iconClass='fa-repeat'
-              l10nId='reloadButton'
-              className='navbutton reload-button'
-              onClick={this.onReload} />
-        }
-        {
-          !this.titleMode && getSetting(settings.SHOW_HOME_BUTTON)
-          ? <Button iconClass='fa-home'
-            l10nId='homeButton'
-            className='navbutton homeButton'
-            onClick={this.onHome} />
+          !this.titleMode
+          ? <span className='bookmarkButtonContainer'>
+            <button data-l10n-id={this.bookmarked ? 'removeBookmarkButton' : 'addBookmarkButton'}
+              className={cx({
+                navigationButton: true,
+                bookmarkButton: true,
+                removeBookmarkButton: this.bookmarked,
+                withHomeButton: getSetting(settings.SHOW_HOME_BUTTON)
+              })}
+              onClick={this.onToggleBookmark} />
+          </span>
           : null
         }
       </div>
@@ -150,6 +206,7 @@ class NavigationBar extends ImmutableComponent {
         endLoadTime={this.props.endLoadTime}
         titleMode={this.titleMode}
         urlbar={this.props.navbar.get('urlbar')}
+        onStop={this.onStop}
         menubarVisible={this.props.menubarVisible}
         />
       {
@@ -161,21 +218,15 @@ class NavigationBar extends ImmutableComponent {
           {
             !this.showNoScriptInfo
             ? null
-            : <Button iconClass='fa-ban'
-              l10nId='noScriptButton'
-              className={cx({
-                'noScript': true
-              })}
-              onClick={this.onNoScript} />
+            : <span className='noScriptButtonContainer'>
+              <Button iconClass='fa-ban'
+                l10nId='noScriptButton'
+                className={cx({
+                  'noScript': true
+                })}
+                onClick={this.onNoScript} />
+            </span>
           }
-          <Button iconClass={this.bookmarked ? 'fa-star' : 'fa-star-o'}
-            className={cx({
-              navbutton: true,
-              bookmarkButton: true,
-              removeBookmarkButton: this.bookmarked
-            })}
-            l10nId={this.bookmarked ? 'removeBookmarkButton' : 'addBookmarkButton'}
-            onClick={this.onToggleBookmark} />
         </div>
       }
     </div>

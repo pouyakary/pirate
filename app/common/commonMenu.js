@@ -10,15 +10,9 @@ const Immutable = require('immutable')
 const locale = require('../../js/l10n')
 const settings = require('../../js/constants/settings')
 const getSetting = require('../../js/settings').getSetting
-const issuesUrl = 'https://github.com/brave/browser-laptop/issues'
+const communityURL = 'https://community.brave.com/'
 const isDarwin = process.platform === 'darwin'
-
-let electron
-try {
-  electron = require('electron')
-} catch (e) {
-  electron = global.require('electron')
-}
+const electron = require('electron')
 
 let app
 let BrowserWindow
@@ -260,7 +254,7 @@ module.exports.reportAnIssueMenuItem = () => {
     label: locale.translation('reportAnIssue'),
     click: function (item, focusedWindow) {
       module.exports.sendToFocusedWindow(focusedWindow,
-                                         [messages.SHORTCUT_NEW_FRAME, issuesUrl])
+                                         [messages.SHORTCUT_NEW_FRAME, communityURL])
     }
   }
 }
@@ -268,20 +262,20 @@ module.exports.reportAnIssueMenuItem = () => {
 module.exports.submitFeedbackMenuItem = () => {
   return {
     label: locale.translation('submitFeedback'),
-    click: function () {
-      appActions.submitFeedback()
+    click: function (item, focusedWindow) {
+      module.exports.sendToFocusedWindow(focusedWindow,
+                                         [messages.SHORTCUT_NEW_FRAME, communityURL])
     }
   }
 }
 
 module.exports.bookmarksToolbarMenuItem = () => {
-  const showBookmarksToolbar = getSetting(settings.SHOW_BOOKMARKS_TOOLBAR)
   return {
     label: locale.translation('bookmarksToolbar'),
     type: 'checkbox',
-    checked: showBookmarksToolbar,
+    checked: getSetting(settings.SHOW_BOOKMARKS_TOOLBAR),
     click: (item, focusedWindow) => {
-      appActions.changeSetting(settings.SHOW_BOOKMARKS_TOOLBAR, !showBookmarksToolbar)
+      appActions.changeSetting(settings.SHOW_BOOKMARKS_TOOLBAR, !getSetting(settings.SHOW_BOOKMARKS_TOOLBAR))
     }
   }
 }
@@ -302,11 +296,7 @@ module.exports.aboutBraveMenuItem = () => {
   return {
     label: locale.translation('aboutApp'),
     click: (item, focusedWindow) => {
-      if (process.type === 'browser') {
-        process.emit(messages.SHOW_ABOUT)
-      } else {
-        electron.ipcRenderer.send(messages.SHOW_ABOUT)
-      }
+      module.exports.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_NEW_FRAME, 'about:brave', { singleFrame: true }])
     }
   }
 }
@@ -350,6 +340,26 @@ module.exports.braveryPaymentsMenuItem = () => {
       } else {
         module.exports.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_NEW_FRAME, 'about:preferences#payments', { singleFrame: true }])
       }
+    }
+  }
+}
+
+module.exports.reloadPageMenuItem = () => {
+  return {
+    label: locale.translation('reloadPage'),
+    accelerator: 'CmdOrCtrl+R',
+    click: function (item, focusedWindow) {
+      module.exports.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_ACTIVE_FRAME_RELOAD])
+    }
+  }
+}
+
+module.exports.cleanReloadMenuItem = () => {
+  return {
+    label: locale.translation('cleanReload'),
+    accelerator: 'CmdOrCtrl+Shift+R',
+    click: function (item, focusedWindow) {
+      module.exports.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_ACTIVE_FRAME_CLEAN_RELOAD])
     }
   }
 }

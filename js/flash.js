@@ -5,18 +5,15 @@
 
 const fs = require('fs')
 const path = require('path')
-let electron
-let app
-try {
-  electron = require('electron')
-} catch (e) {
-  electron = global.require('electron')
-}
-if (process.type === 'browser') {
-  app = electron.app
-} else {
-  app = electron.remote.app
-}
+const {app, ipcMain, webContents} = require('electron')
+const appActions = require('./actions/appActions')
+const {getOrigin} = require('./state/siteUtil')
+const locale = require('../app/locale')
+const messages = require('./constants/messages')
+const settings = require('./constants/settings')
+
+// set to true if the flash install check has succeeded
+let flashInstalled = false
 
 const getPepperFlashPath = () => {
   if (['darwin', 'win32'].includes(process.platform)) {
@@ -39,23 +36,49 @@ const getPepperFlashPath = () => {
   return pluginPath
 }
 
-module.exports.init = () => {
-  // TODO: This only works if sync currently
-  try {
-    const pepperFlashSystemPluginPath = getPepperFlashPath()
-    const pepperFlashManifestPath = path.resolve(pepperFlashSystemPluginPath, '..', 'manifest.json')
-    const data = fs.readFileSync(pepperFlashManifestPath)
-    if (!data) {
-      return false
-    }
+module.exports.showFlashMessageBox = (location, tabId) => {
+  const origin = getOrigin(location)
+  const message = locale.translation('allowFlashPlayer', {origin})
 
-    const pepperFlashManifest = JSON.parse(data)
-    app.commandLine.appendSwitch('ppapi-flash-path', pepperFlashSystemPluginPath)
-    app.commandLine.appendSwitch('ppapi-flash-version', pepperFlashManifest.version)
-    return true
-  } catch (e) {
-    return false
-  }
+  setImmediate(() => {
+    // This is bad, we shouldn't be calling actions from actions
+    // so we need to refactor notifications into a state helper
+    appActions.showMessageBox({
+      buttons: [
+        {text: locale.translation('deny')},
+        {text: locale.translation('allow')}
+      ],
+      message,
+      frameOrigin: origin,
+      options: {
+        persist: true
+      }
+    })
+
+    ipcMain.once(messages.NOTIFICATION_RESPONSE, (e, msg, buttonIndex, persist) => {
+      if (msg === message) {
+        appActions.hideMessageBox(message)
+        if (buttonIndex === 1) {
+          if (persist) {
+            appActions.changeSiteSetting(origin, 'flash', Date.now() + 7 * 24 * 1000 * 3600)
+          } else {
+            appActions.changeSiteSetting(origin, 'flash', 1)
+          }
+
+          if (tabId) {
+            const tab = webContents.fromTabID(tabId)
+            if (tab && !tab.isDestroyed()) {
+              return tab.reload()
+            }
+          }
+        } else {
+          if (persist) {
+            appActions.changeSiteSetting(origin, 'flash', false)
+          }
+        }
+      }
+    })
+  })
 }
 
 module.exports.checkFlashInstalled = (cb) => {
@@ -63,13 +86,27 @@ module.exports.checkFlashInstalled = (cb) => {
     const pepperFlashSystemPluginPath = getPepperFlashPath()
     const pepperFlashManifestPath = path.resolve(pepperFlashSystemPluginPath, '..', 'manifest.json')
     fs.readFile(pepperFlashManifestPath, (err, data) => {
-      if (err || !data) {
-        cb(false)
-      } else {
-        cb(true)
+      try {
+        if (err || !data) {
+          flashInstalled = false
+        } else {
+          const manifest = JSON.parse(data)
+          app.commandLine.appendSwitch('ppapi-flash-path', pepperFlashSystemPluginPath)
+          app.commandLine.appendSwitch('ppapi-flash-version', manifest.version)
+          flashInstalled = true
+        }
+      } finally {
+        appActions.changeSetting(settings.FLASH_INSTALLED, flashInstalled)
+        cb && cb(flashInstalled)
       }
     })
   } catch (e) {
-    cb(false)
+    cb && cb(flashInstalled)
   }
 }
+
+module.exports.init = () => {
+  setImmediate(module.exports.checkFlashInstalled)
+}
+
+module.exports.resourceName = 'flash'

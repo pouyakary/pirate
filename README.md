@@ -16,11 +16,17 @@ To download the latest release, [see our releases page](https://github.com/brave
 
 For a more user-friendly download page, [please visit our website](https://brave.com/downloads.html).
 
+## Community
+
+[Join the community](https://community.brave.com/) if you'd like to get more involved with Brave. You can [ask for help](https://community.brave.com/c/help-me),
+[discuss features you'd like to see](https://community.brave.com/c/feature-requests), and a lot more. We'd love to have your help so that we can continue improving Brave.
+
 ## Useful documentation
 
 * See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for tips and guidelines about contributing.
 * See [docs/tests.md](docs/tests.md) for information on testing, including how to run a subset of the tests.
 * See [docs/debugging.md](docs/debugging.md) for information on debugging.
+* See [docs/translations.md](docs/translations.md) to learn how you can help us with translations (localization).
 
 ## Build prerequisites
 
@@ -28,7 +34,7 @@ You'll need certain packages installed before you can build and run Brave locall
 
 ### Windows
 
-Please see the [Building on Windows wiki entry](https://github.com/brave/browser-laptop/wiki/Building-on-Windows)
+Please see the [Building on Windows wiki entry](https://github.com/brave/browser-laptop/wiki/(setup)-Windows-build-guide)
 
 ### All other platforms
 
@@ -42,7 +48,18 @@ Please see the [Building on Windows wiki entry](https://github.com/brave/browser
 
 ###  Linux
 
-* `apt-get install libgnome-keyring-dev build-essential`
+On Debian/Ubuntu
+
+````
+apt-get install libgnome-keyring-dev build-essential
+````
+
+On Fedora
+
+````
+dnf install libgnome-keyring-devel rpm-build
+dnf group install "Development Tools" "C Development Tools and Libraries"
+````
 
 ## Installation
 
@@ -68,6 +85,8 @@ After installing the prerequisites:
         npm install
 
 If this fails on Linux with an error related to `abp-filter-parser-cpp`, try updating to Node 6.1 and `node-gyp` 3.3.1 (see discussion at https://github.com/brave/browser-laptop/issues/214)
+
+Instead of `npm install` you may also install with [yarn](https://github.com/yarnpkg/yarn).
 
 ### Troubleshooting
 
@@ -135,10 +154,9 @@ You can simply run an npm task to build and install your local electron instance
 
     npm run install
 
-If your directory structure isn't side by side, you can run the following (altering the rsync as needed):
+If your directory structure isn't side by side, you can run the following (altering the rsync as needed) command from within electron:
 
-    npm run build
-    rsync -avz --delete out/D/Brave.app {{path-to-browser-laptop}}/node_modules/electron-prebuilt/dist/
+    rsync -avz --delete out/D/Brave.app dist {{path-to-browser-laptop}}/node_modules/electron-prebuilt/dist/ 
 
 
 ## Packaging for bundles, installers, and updates
@@ -184,3 +202,9 @@ To create a package:
 To create a dev package:
 
     CHANNEL=dev npm run build-package
+
+Finally run:
+
+    npm run build-installer
+
+You will see a .deb and .rpm files in dist/

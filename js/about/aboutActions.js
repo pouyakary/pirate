@@ -6,7 +6,7 @@ const messages = require('../constants/messages')
 const serializer = require('../dispatcher/serializer')
 const windowConstants = require('../constants/windowConstants')
 const appConstants = require('../constants/appConstants')
-const ipc = window.chrome.ipc
+const ipc = window.chrome.ipcRenderer
 
 const aboutActions = {
   /**
@@ -88,6 +88,36 @@ const aboutActions = {
   },
 
   /**
+   * Generates a file with the users backup keys
+   */
+  ledgerGenerateKeyFile: function (backupAction) {
+    aboutActions.dispatchAction({
+      actionType: appConstants.APP_BACKUP_KEYS,
+      backupAction
+    })
+  },
+
+  /**
+   * Recover wallet by merging old wallet into new one
+   */
+  ledgerRecoverWallet: function (firstRecoveryKey, secondRecoveryKey) {
+    aboutActions.dispatchAction({
+      actionType: appConstants.APP_RECOVER_WALLET,
+      firstRecoveryKey,
+      secondRecoveryKey
+    })
+  },
+
+  /**
+   * Clear wallet recovery status
+   */
+  clearRecoveryStatus: function () {
+    aboutActions.dispatchAction({
+      actionType: appConstants.APP_CLEAR_RECOVERY
+    })
+  },
+
+  /**
    * Click through a certificate error.
    *
    * @param {string} url - The URL with the cert error
@@ -124,8 +154,11 @@ const aboutActions = {
     })
   },
 
-  openDownloadPath: function (download) {
-    ipc.send(messages.OPEN_DOWNLOAD_PATH, download.toJS())
+  downloadRevealed: function (downloadId) {
+    aboutActions.dispatchAction({
+      actionType: appConstants.APP_DOWNLOAD_REVEALED,
+      downloadId
+    })
   },
 
   decryptPassword: function (encryptedPassword, authTag, iv, id) {
@@ -136,10 +169,11 @@ const aboutActions = {
     ipc.send(messages.SET_CLIPBOARD, text)
   },
 
-  setNewTabDetail: function (newTabPageDetail) {
+  setNewTabDetail: function (newTabPageDetail, refresh) {
     aboutActions.dispatchAction({
       actionType: appConstants.APP_CHANGE_NEW_TAB_DETAIL,
-      newTabPageDetail
+      newTabPageDetail,
+      refresh
     })
   },
 
@@ -164,10 +198,6 @@ const aboutActions = {
     })
   },
 
-  checkFlashInstalled: function () {
-    ipc.send(messages.CHECK_FLASH_INSTALLED)
-  },
-
   setResourceEnabled: function (resourceName, enabled) {
     aboutActions.dispatchAction({
       actionType: appConstants.APP_SET_RESOURCE_ENABLED,
@@ -180,7 +210,7 @@ const aboutActions = {
     ipc.sendToHost(messages.CLEAR_BROWSING_DATA_NOW, clearBrowsingDataDetail)
   },
 
-  importBrowerDataNow: function () {
+  importBrowserDataNow: function () {
     ipc.send(messages.IMPORT_BROWSER_DATA_NOW)
   },
 
@@ -276,11 +306,68 @@ const aboutActions = {
   },
 
   /**
-   * Dispatches a message to submit feedback
+   * Show the "Add Bookmark" control
+   * @param {Object} siteDetail - object bound to add/edit control
    */
-  submitFeedback: function () {
+  showAddBookmark: function (siteDetail) {
     aboutActions.dispatchAction({
-      actionType: appConstants.APP_SUBMIT_FEEDBACK
+      actionType: windowConstants.WINDOW_SET_BOOKMARK_DETAIL,
+      currentDetail: siteDetail,
+      originalDetail: null,
+      destinationDetail: null,
+      shouldShowLocation: true
+    })
+  },
+
+  /**
+   * Show the "Add Bookmark" control for a folder
+   * @param {Object} siteDetail - object bound to add/edit control
+   */
+  showAddBookmarkFolder: function (siteDetail) {
+    aboutActions.dispatchAction({
+      actionType: windowConstants.WINDOW_SET_BOOKMARK_DETAIL,
+      currentDetail: siteDetail
+    })
+  },
+
+  /**
+   * Dispatches a message to set add/edit bookmark details
+   * If set, also indicates that add/edit is shown
+   * @param {Object} currentDetail - Properties of the bookmark to change to
+   * @param {Object} originalDetail - Properties of the bookmark to edit
+   * @param {Object} destinationDetail - Will move the added bookmark to the specified position
+   * @param {boolean} shouldShowLocation - Whether or not to show the URL input
+   * @param {boolean} isBookmarkHanger - true if triggered from star icon in nav bar
+   */
+  setBookmarkDetail: function (currentDetail, originalDetail, destinationDetail, shouldShowLocation, isBookmarkHanger) {
+    aboutActions.dispatchAction({
+      actionType: windowConstants.WINDOW_SET_BOOKMARK_DETAIL,
+      currentDetail,
+      originalDetail,
+      destinationDetail,
+      shouldShowLocation,
+      isBookmarkHanger
+    })
+  },
+
+  /**
+   * Dispatch a message to set default browser
+   */
+  setAsDefaultBrowser: function () {
+    aboutActions.dispatchAction({
+      actionType: appConstants.APP_DEFAULT_BROWSER_UPDATED,
+      useBrave: true
+    })
+  },
+
+  /**
+   * Dispatches a message to render a URL into a PDF file
+   */
+  renderUrlToPdf: function (url, savePath) {
+    aboutActions.dispatchAction({
+      actionType: appConstants.APP_RENDER_URL_TO_PDF,
+      url: url,
+      savePath: savePath
     })
   }
 }

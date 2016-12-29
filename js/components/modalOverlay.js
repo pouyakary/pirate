@@ -9,13 +9,45 @@ const ImmutableComponent = require('./immutableComponent')
  * Represents a modal overlay
  */
 
+var globalInstanceCounter = 0
+var mountedInstances = []
+
 class ModalOverlay extends ImmutableComponent {
+
+  componentWillMount () {
+    this.instanceId = globalInstanceCounter++
+
+    this.setState({last: true})
+
+    if (mountedInstances.length) {
+      let lastModal = mountedInstances[mountedInstances.length - 1]
+      lastModal.setState({last: false})
+      lastModal.forceUpdate()
+    }
+
+    mountedInstances.push(this)
+  }
+
+  componentWillUnmount () {
+    let instId = this.instanceId
+
+    mountedInstances = mountedInstances.filter(function (inst) {
+      return inst.instanceId !== instId
+    })
+
+    if (mountedInstances.length) {
+      let lastModal = mountedInstances[mountedInstances.length - 1]
+      lastModal.setState({last: true})
+      lastModal.forceUpdate()
+    }
+  }
+
   get dialogContent () {
     var close = null
     var button = null
     var title = null
     if (!this.props.emptyDialog) {
-      close = (this.props.onHide ? <button type='button' className='close pull-right' onClick={this.props.onHide}><span>&times;</span></button> : null)
+      close = (this.props.onHide ? <button type='button' className='close' onClick={this.props.onHide} /> : null)
       title = (this.props.title ? <div className='sectionTitle' data-l10n-id={this.props.title} /> : null)
     }
     let customTitleClassesStr = (this.props.customTitleClasses ? this.props.customTitleClasses : '')
@@ -35,7 +67,7 @@ class ModalOverlay extends ImmutableComponent {
   }
 
   render () {
-    return <div className='modal fade' role='alert'>
+    return <div className={'modal fade' + (this.state.last ? ' last' : '') + (this.props.transparentBackground ? ' transparentBackground' : '')} role='alert'>
       {this.dialogContent}
     </div>
   }

@@ -19,14 +19,27 @@ module.exports.fileUrl = (str) => {
 }
 
 /**
- * Determines the path of a relative URL from the hosted app
+ * Gets the URL of a page hosted by the braveExtension or torrentExtension
+ * Returns 'chrome-extension://<...>'
  */
-module.exports.getAppUrl = function (relativeUrl) {
+module.exports.getBraveExtUrl = function (relativeUrl) {
   if (relativeUrl === undefined) {
     relativeUrl = ''
   }
 
   return 'chrome-extension://' + config.braveExtensionId + '/' + relativeUrl
+}
+
+/**
+ * Gets the URL of a page hosted by the torrentExtension
+ * Returns 'chrome-extension://<...>'
+ */
+module.exports.getTorrentExtUrl = function (relativeUrl) {
+  if (relativeUrl === undefined) {
+    relativeUrl = ''
+  }
+
+  return 'chrome-extension://' + config.torrentExtensionId + '/' + relativeUrl
 }
 
 module.exports.getExtensionsPath = function (extensionDir) {
@@ -36,37 +49,59 @@ module.exports.getExtensionsPath = function (extensionDir) {
     : path.join(__dirname, '..', '..', 'app', 'extensions', extensionDir)
 }
 
-module.exports.getIndexHTML = function () {
+module.exports.getGenDir = function (url) {
+  const genDirRoots = [
+    module.exports.getBraveIndexPath,
+    module.exports.getBraveExtUrl,
+    module.exports.getTorrentExtUrl
+  ]
+  for (let i = 0; i < genDirRoots.length; i++) {
+    let genDir = url.replace(genDirRoots[i]('gen'), '')
+    if (genDir !== url) {
+      return 'gen' + genDir
+    }
+  }
+  return null
+}
+
+module.exports.getBraveIndexPath = function (relateivePath = '') {
+  return module.exports.fileUrl(
+      path.resolve(__dirname, '..', '..') + '/app/extensions/brave/' + relateivePath).replace('file://', 'chrome://brave')
+}
+
+module.exports.getBraveExtIndexHTML = function () {
   return process.env.NODE_ENV === 'development'
-    ? module.exports.fileUrl(path.resolve(__dirname, '..', '..') + '/app/extensions/brave/index-dev.html')
-    : module.exports.fileUrl(path.resolve(__dirname, '..', '..') + '/app/extensions/brave/index.html')
+    ? module.exports.getBraveIndexPath('index-dev.html')
+    : module.exports.getBraveIndexPath('index.html')
 }
 
 /**
  * Returns the URL to the application's manifest
  */
 module.exports.getManifestUrl = function () {
-  return module.exports.getAppUrl('manifest.webapp')
+  return module.exports.getBraveExtUrl('manifest.webapp')
 }
 
 // Map of source about: URLs mapped to target URLs
 module.exports.aboutUrls = new Immutable.Map({
-  'about:about': module.exports.getAppUrl('about-about.html'),
-  'about:blank': module.exports.getAppUrl('about-blank.html'),
-  'about:history': module.exports.getAppUrl('about-history.html'),
-  'about:bookmarks': module.exports.getAppUrl('about-bookmarks.html'),
-  'about:downloads': module.exports.getAppUrl('about-downloads.html'),
-  'about:extensions': module.exports.getAppUrl('about-extensions.html'),
-  'about:adblock': module.exports.getAppUrl('about-adblock.html'),
-  'about:newtab': module.exports.getAppUrl('about-newtab.html'),
-  'about:preferences': module.exports.getAppUrl('about-preferences.html'),
-  'about:config': module.exports.getAppUrl('about-config.html'),
-  'about:certerror': module.exports.getAppUrl('about-certerror.html'),
-  'about:safebrowsing': module.exports.getAppUrl('about-safebrowsing.html'),
-  'about:passwords': module.exports.getAppUrl('about-passwords.html'),
-  'about:flash': module.exports.getAppUrl('about-flash.html'),
-  'about:error': module.exports.getAppUrl('about-error.html'),
-  'about:autofill': module.exports.getAppUrl('about-autofill.html')
+  'about:about': module.exports.getBraveExtUrl('about-about.html'),
+  'about:adblock': module.exports.getBraveExtUrl('about-adblock.html'),
+  'about:autofill': module.exports.getBraveExtUrl('about-autofill.html'),
+  'about:blank': module.exports.getBraveExtUrl('about-blank.html'),
+  'about:bookmarks': module.exports.getBraveExtUrl('about-bookmarks.html'),
+  'about:brave': module.exports.getBraveExtUrl('about-brave.html'),
+  'about:certerror': module.exports.getBraveExtUrl('about-certerror.html'),
+  'about:config': module.exports.getBraveExtUrl('about-config.html'),
+  'about:downloads': module.exports.getBraveExtUrl('about-downloads.html'),
+  'about:error': module.exports.getBraveExtUrl('about-error.html'),
+  'about:extensions': module.exports.getBraveExtUrl('about-extensions.html'),
+  'about:history': module.exports.getBraveExtUrl('about-history.html'),
+  'about:newtab': module.exports.getBraveExtUrl('about-newtab.html'),
+  'about:passwords': module.exports.getBraveExtUrl('about-passwords.html'),
+  'about:preferences': module.exports.getBraveExtUrl('about-preferences.html'),
+  'about:safebrowsing': module.exports.getBraveExtUrl('about-safebrowsing.html'),
+  'about:styles': module.exports.getBraveExtUrl('about-styles.html'),
+  'about:contributions': module.exports.getBraveExtUrl('about-contributions.html')
 })
 
 module.exports.isIntermediateAboutPage = (location) =>
@@ -76,7 +111,7 @@ module.exports.isNotImplementedAboutPage = (location) =>
   ['about:config'].includes(getBaseUrl(location))
 
 module.exports.isNavigatableAboutPage = (location) =>
-  !module.exports.isIntermediateAboutPage(location) && !module.exports.isNotImplementedAboutPage(location) && !['about:newtab', 'about:blank', 'about:flash'].includes(getBaseUrl(location))
+  !module.exports.isIntermediateAboutPage(location) && !module.exports.isNotImplementedAboutPage(location) && !['about:newtab', 'about:blank', 'about:contributions'].includes(getBaseUrl(location))
 
 // Map of target URLs mapped to source about: URLs
 const aboutUrlsReverse = new Immutable.Map(module.exports.aboutUrls.reduce((obj, v, k) => {
@@ -123,6 +158,44 @@ module.exports.isTargetAboutUrl = function (input) {
 }
 
 /**
+ * Obtains the target URL associated with a magnet: source URL
+ * Returns null if the input is not a magnet URL
+ * Example: getTargetMagnetUrl('magnet:...') -> 'chrome-extension://<...>.html#magnet:...'
+ */
+module.exports.getTargetMagnetUrl = function (input) {
+  if (!input.startsWith('magnet:')) return null
+  const url = module.exports.getTorrentExtUrl('webtorrent.html')
+  return [url, input].join('#')
+}
+
+/**
+ * Obtains the source magnet: URL associated with a target URL
+ * Returns null if the input is not the local URL for a magnet link.
+ * Example: getSourceMagnetUrl('chrome-extension://<...>.html#magnet:...') -> 'magnet:...'
+ */
+module.exports.getSourceMagnetUrl = function (input) {
+  if (getBaseUrl(input) !== module.exports.getTorrentExtUrl('webtorrent.html')) return null
+  const url = getHash(input)
+  return url
+}
+
+/**
+ * Checks if the input looks like a magnet: URL
+ * Example: getSourceMagnetUrl('magnet:?x=y') -> true
+ */
+module.exports.isSourceMagnetUrl = function (input) {
+  return !!module.exports.getTargetMagnetUrl(input)
+}
+
+/*
+ * Checks if the input looks like the local URL for a magnet link.
+ * Example: getSourceMagnetUrl('chrome-extension://<...>.html#magnet:?x=y') -> true
+ */
+module.exports.isTargetMagnetUrl = function (input) {
+  return !!module.exports.getSourceMagnetUrl(input)
+}
+
+/**
  * Determines whether a string is a valid URL. Based on node-urlutil.js.
  * @param {string} input
  */
@@ -146,4 +219,32 @@ function getHash (input) {
   return (typeof input === 'string') ? input.split('#')[1] : ''
 }
 
-module.exports.navigatableTypes = ['http:', 'https:', 'about:', 'chrome:', 'chrome-extension:', 'file:', 'view-source:', 'ftp:']
+module.exports.navigatableTypes = ['http:', 'https:', 'about:', 'chrome:', 'chrome-extension:', 'file:', 'view-source:', 'ftp:', 'magnet:']
+
+/**
+ * Determine the URL to use when creating a new tab
+ */
+module.exports.newFrameUrl = function () {
+  const {getSetting} = require('../settings')
+  const settings = require('../constants/settings')
+  const settingValue = getSetting(settings.NEWTAB_MODE)
+  const {newTabMode} = require('../../app/common/constants/settingsEnums')
+
+  switch (settingValue) {
+    case newTabMode.HOMEPAGE:
+      return getSetting(settings.HOMEPAGE) || 'about:blank'
+
+    case newTabMode.DEFAULT_SEARCH_ENGINE:
+      const searchProviders = require('../data/searchProviders').providers
+      const defaultSearchEngine = getSetting(settings.DEFAULT_SEARCH_ENGINE)
+      const defaultSearchEngineSettings = searchProviders.filter(engine => {
+        return engine.name === defaultSearchEngine
+      })
+      return defaultSearchEngineSettings[0].base
+
+    case newTabMode.EMPTY_NEW_TAB:
+    case newTabMode.NEW_TAB_PAGE:
+    default:
+      return 'about:newtab'
+  }
+}

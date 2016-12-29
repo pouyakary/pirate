@@ -43,6 +43,16 @@ function getFrameByIndex (windowState, i) {
   return windowState.getIn(['frames', i])
 }
 
+// This will eventually go away fully when we replace frameKey by tabId
+function getFrameKeyByTabId (windowState, tabId) {
+  let parentFrameKey
+  const openerFrame = getFrameByTabId(windowState, tabId)
+  if (openerFrame) {
+    parentFrameKey = openerFrame.get('key')
+  }
+  return parentFrameKey
+}
+
 function getFrameKeysByDisplayIndex (frames) {
   let framesByDisplayIndex = [[], []]
   frames.forEach((frame) => {
@@ -207,6 +217,17 @@ function isAncestorFrameKey (frames, frame, parentFrameKey) {
   return isAncestorFrameKey(frames, parentFrame, parentFrameKey)
 }
 
+function getPartitionNumber (partition) {
+  console.log(partition)
+  const regex = /partition-(\d+)/
+  const matches = regex.exec(partition)
+  return matches && matches[0]
+}
+
+function isPrivatePartition (partition) {
+  return partition && !partition.startsWith('persist:')
+}
+
 function isSessionPartition (partition) {
   return partition && partition.startsWith('persist:partition-')
 }
@@ -219,34 +240,6 @@ function getPartition (frameOpts) {
     partition = `persist:partition-${frameOpts.get('partitionNumber')}`
   }
   return partition
-}
-
-function cloneFrame (frameOpts, guestInstanceId) {
-  const cloneableAttributes = [
-    'audioMuted',
-    'canGoBack',
-    'canGoForward',
-    'icon',
-    'title',
-    'isPrivate',
-    'partitionNumber',
-    'themeColor',
-    'computedThemeColor'
-  ]
-  let clone = {}
-  cloneableAttributes.forEach((attr) => {
-    clone[attr] = frameOpts[attr]
-  })
-
-  clone.guestInstanceId = guestInstanceId
-  // copy the history
-  clone.history = frameOpts.history.slice(0)
-  // location is loaded by the webcontents
-  clone.delayedLoadUrl = frameOpts.location
-  clone.location = 'about:blank'
-  clone.src = 'about:blank'
-  clone.parentFrameKey = frameOpts.key
-  return clone
 }
 
 /**
@@ -291,7 +284,8 @@ const tabFromFrame = (frame) => {
  * Adds a frame specified by frameOpts and newKey and sets the activeFrameKey
  * @return Immutable top level application state ready to merge back in
  */
-function addFrame (frames, tabs, frameOpts, newKey, partitionNumber, activeFrameKey, insertionIndex) {
+function addFrame (windowState, tabs, frameOpts, newKey, partitionNumber, activeFrameKey, insertionIndex) {
+  const frames = windowState.get('frames')
   const url = frameOpts.location || config.defaultUrl
 
   // delayedLoadUrl is used as a placeholder when the new frame is created
@@ -312,6 +306,13 @@ function addFrame (frames, tabs, frameOpts, newKey, partitionNumber, activeFrame
     if (alreadyPinnedFrameProps) {
       return {}
     }
+  }
+
+  // TODO: longer term get rid of parentFrameKey completely instead of
+  // calculating it here.
+  let parentFrameKey = frameOpts.parentFrameKey
+  if (frameOpts.openerTabId) {
+    parentFrameKey = getFrameKeyByTabId(windowState, frameOpts.openerTabId)
   }
 
   const frame = Immutable.fromJS(Object.assign({
@@ -356,6 +357,7 @@ function addFrame (frames, tabs, frameOpts, newKey, partitionNumber, activeFrame
       certDetails: null
     },
     unloaded: frameOpts.unloaded,
+    parentFrameKey,
     history: []
   }, frameOpts))
 
@@ -498,6 +500,7 @@ module.exports = {
   isAncestorFrameKey,
   isFrameKeyActive,
   isFrameKeyPinned,
+  isPrivatePartition,
   isSessionPartition,
   getFrameIndex,
   getFrameDisplayIndex,
@@ -507,6 +510,7 @@ module.exports = {
   getFrameByDisplayIndex,
   getFrameByKey,
   getFrameByTabId,
+  getPartitionNumber,
   getActiveFrame,
   setActiveFrameDisplayIndex,
   setActiveFrameIndex,
@@ -520,11 +524,11 @@ module.exports = {
   getFramePropsIndex,
   getFrameKeysByDisplayIndex,
   getPartition,
-  cloneFrame,
   addFrame,
   undoCloseFrame,
   removeFrame,
   removeOtherFrames,
   tabFromFrame,
+  getFrameKeyByTabId,
   getFrameTabPageIndex
 }

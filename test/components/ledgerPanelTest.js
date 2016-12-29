@@ -1,14 +1,14 @@
 /* global describe, it, beforeEach, before */
 
 const Brave = require('../lib/brave')
-const {urlInput, addFundsButton, paymentsStatus, paymentsWelcomePage, paymentsTab, walletSwitch, ledgerTable} = require('../lib/selectors')
+const {urlInput, advancedSettings, addFundsButton, paymentsStatus, paymentsWelcomePage, paymentsTab, walletSwitch, ledgerTable} = require('../lib/selectors')
 const assert = require('assert')
 
 const prefsUrl = 'about:preferences'
+const ledgerAPIWaitTimeout = 10000
 
 function * setup (client) {
   yield client
-    .waitUntilWindowLoaded()
     .waitForUrl(Brave.newTabUrl)
     .waitForBrowserWindow()
     .waitForVisible(urlInput)
@@ -29,7 +29,7 @@ describe('Payments Panel', function () {
         .click(paymentsTab)
         .waitForVisible(paymentsWelcomePage)
       let background = yield this.app.client.getCssProperty(walletSwitch, 'background-color')
-      assert.equal(background.value, 'rgba(211,211,211,1)')
+      assert.equal(background.value, 'rgba(204,204,204,1)')
     })
 
     it('payments can be enabled', function * () {
@@ -39,6 +39,7 @@ describe('Payments Panel', function () {
         .waitForVisible(paymentsTab)
         .click(paymentsTab)
         .waitForVisible(paymentsWelcomePage)
+        .waitForVisible(walletSwitch)
         .click(walletSwitch)
         .windowByUrl(Brave.browserWindowUrl)
         .waitUntil(function () {
@@ -46,7 +47,7 @@ describe('Payments Panel', function () {
             return val.value.settings['payments.enabled'] === true &&
               val.value.settings['payments.notifications'] === true
           })
-        })
+        }, ledgerAPIWaitTimeout)
     })
 
     it('payments can be disabled', function * () {
@@ -56,6 +57,7 @@ describe('Payments Panel', function () {
         .waitForVisible(paymentsTab)
         .click(paymentsTab)
         .waitForVisible(paymentsWelcomePage)
+        .waitForVisible(walletSwitch)
         .click(walletSwitch)
         .windowByUrl(Brave.browserWindowUrl)
         .waitUntil(function () {
@@ -63,8 +65,9 @@ describe('Payments Panel', function () {
             return val.value.settings['payments.enabled'] === true &&
               val.value.settings['payments.notifications'] === true
           })
-        })
-        .tabByUrl(prefsUrl)
+        }, ledgerAPIWaitTimeout)
+        .tabByIndex(0)
+        .waitForVisible(walletSwitch)
         .click(walletSwitch)
         .windowByUrl(Brave.browserWindowUrl)
         .waitUntil(function () {
@@ -72,7 +75,30 @@ describe('Payments Panel', function () {
             return val.value.settings['payments.enabled'] === false &&
               val.value.settings['payments.notifications'] === false
           })
-        })
+        }, ledgerAPIWaitTimeout)
+    })
+
+    it('advanced settings is hidden by default', function * () {
+      yield this.app.client
+        .tabByIndex(0)
+        .loadUrl(prefsUrl)
+        .waitForVisible(paymentsTab)
+        .click(paymentsTab)
+        .waitForVisible(paymentsWelcomePage)
+        .waitForVisible(walletSwitch)
+        .waitForVisible(advancedSettings, 100, true)
+    })
+
+    it('advanced settings is visible when payments are enabled', function * () {
+      yield this.app.client
+        .tabByIndex(0)
+        .loadUrl(prefsUrl)
+        .waitForVisible(paymentsTab)
+        .click(paymentsTab)
+        .waitForVisible(paymentsWelcomePage)
+        .waitForVisible(walletSwitch)
+        .click(walletSwitch)
+        .waitForVisible(advancedSettings, ledgerAPIWaitTimeout)
     })
 
     it('can create wallet', function * () {
@@ -82,6 +108,7 @@ describe('Payments Panel', function () {
         .waitForVisible(paymentsTab)
         .click(paymentsTab)
         .waitForVisible(paymentsWelcomePage)
+        .waitForVisible(walletSwitch)
         .click(walletSwitch)
         .waitUntil(function () {
           return this.getText(paymentsStatus).then((val) => val.includes('Creating'))
@@ -90,7 +117,7 @@ describe('Payments Panel', function () {
           // Note: wallet creation may take a long time, so this test is likely
           // to time out.
           return this.getText(addFundsButton).then((val) => val.includes('Add funds'))
-        })
+        }, ledgerAPIWaitTimeout)
     })
   })
 })
@@ -106,6 +133,7 @@ describe('synopsis', function () {
       .waitForVisible(paymentsTab)
       .click(paymentsTab)
       .waitForVisible(paymentsWelcomePage)
+      .waitForVisible(walletSwitch)
       .click(walletSwitch)
       .waitUntil(function () {
         return this.getText(paymentsStatus).then((val) => val.includes('Creating'))
@@ -153,6 +181,7 @@ describe('synopsis', function () {
       .loadUrl(prefsUrl)
       .waitForVisible(paymentsTab)
       .click(paymentsTab)
+      .waitForVisible('[data-l10n-id="publisher"]')
       .click('[data-l10n-id="publisher"]')
       .waitUntil(function () {
         return this.getText(ledgerTable + ' a').then((text) => {
@@ -176,7 +205,9 @@ describe('synopsis', function () {
       .loadUrl(prefsUrl)
       .waitForVisible(paymentsTab)
       .click(paymentsTab)
+      .waitForVisible('[data-l10n-id="publisher"]')
       .click('[data-l10n-id="publisher"]')
+      .waitForVisible(ledgerTable + ' .switchBackground')
       .click(ledgerTable + ' .switchBackground')
       .windowByUrl(Brave.browserWindowUrl)
       .waitUntil(function () {

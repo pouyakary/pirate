@@ -48,35 +48,27 @@ module.exports.siteHacks = {
       }
     },
   },
-  'www.cityam.com': {
-    userAgent: 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36 Googlebot'
+  'adobe.com': {
+    onBeforeSendHeaders: function(details) {
+      let userAgent = details.requestHeaders['User-Agent']
+      userAgent = [userAgent.split('Chrome')[0], 'Brave Chrome', userAgent.split('Chrome')[1]].join('')
+      details.requestHeaders['User-Agent'] = userAgent
+      return {
+        requestHeaders: details.requestHeaders
+      }
+    }
+  },
+  'cityam.com': {
+    onBeforeSendHeaders: function(details) {
+      details.requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36 Googlebot'
+      return {
+        requestHeaders: details.requestHeaders
+      }
+    }
   },
   // For links like: https://player.twitch.tv/?channel=iwilldominate
   'player.twitch.tv': {
     enableForAll: true
-  },
-  'www.wired.com': {
-    // Site hack from
-    // https://github.com/gorhill/uBlock/blob/ce2d235e4fd2ade2be101fa7030870044b30fd3c/assets/ublock/resources.txt#L699
-    pageLoadEndScript: `(function() {
-      var sto = window.setTimeout,
-        re = /^function n\(\)/;
-      window.setTimeout = function(a, b) {
-          if ( b !== 50 || !re.test(a.toString()) ) {
-                sto(a, b);
-              }
-        };
-    })();`
-  },
-  'www.extremetech.com': {
-    pageLoadStartScript: `(function() {
-      var sto = window.setTimeout;
-      window.setTimeout = function(a, b) {
-          if ( b !== 250 ) {
-                sto(a, b);
-              }
-        };
-    })();`
   },
   'imasdk.googleapis.com': {
     enableForAdblock: true,

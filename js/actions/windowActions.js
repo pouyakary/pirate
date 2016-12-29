@@ -5,9 +5,8 @@
 'use strict'
 
 const AppDispatcher = require('../dispatcher/appDispatcher')
-const WindowConstants = require('../constants/windowConstants')
+const windowConstants = require('../constants/windowConstants')
 const appActions = require('../actions/appActions')
-const webviewActions = require('../actions/webviewActions')
 const messages = require('../constants/messages')
 const siteTags = require('../constants/siteTags')
 const siteUtil = require('../state/siteUtil')
@@ -28,7 +27,7 @@ const windowActions = {
    */
   setState: function (windowState) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_STATE,
+      actionType: windowConstants.WINDOW_SET_STATE,
       windowState
     })
   },
@@ -85,7 +84,7 @@ const windowActions = {
    */
   setUrl: function (location, key) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL,
+      actionType: windowConstants.WINDOW_SET_URL,
       location,
       key
     })
@@ -97,13 +96,15 @@ const windowActions = {
    * @param {string} location - The URL of the page that was navigated to.
    * @param {number} key - The frame key to modify.
    * @param {boolean} isNavigatedInPage - true if it was a navigation within the same page.
+   * @param {number} tabId - the tab id
    */
-  setNavigated: function (location, key, isNavigatedInPage) {
+  setNavigated: function (location, key, isNavigatedInPage, tabId) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_NAVIGATED,
+      actionType: windowConstants.WINDOW_SET_NAVIGATED,
       location,
       key,
-      isNavigatedInPage
+      isNavigatedInPage,
+      tabId
     })
   },
 
@@ -115,7 +116,7 @@ const windowActions = {
    */
   setSecurityState: function (frameProps, securityState) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_SECURITY_STATE,
+      actionType: windowConstants.WINDOW_SET_SECURITY_STATE,
       securityState,
       frameProps
     })
@@ -128,7 +129,7 @@ const windowActions = {
    */
   setFrameTabId: function (frameProps, tabId) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FRAME_TAB_ID,
+      actionType: windowConstants.WINDOW_SET_FRAME_TAB_ID,
       frameProps,
       tabId
     })
@@ -142,7 +143,7 @@ const windowActions = {
    */
   setFrameError: function (frameProps, errorDetails) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FRAME_ERROR,
+      actionType: windowConstants.WINDOW_SET_FRAME_ERROR,
       frameProps,
       errorDetails
     })
@@ -156,7 +157,7 @@ const windowActions = {
    */
   setNavBarUserInput: function (location) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_NAVBAR_INPUT,
+      actionType: windowConstants.WINDOW_SET_NAVBAR_INPUT,
       location
     })
   },
@@ -170,7 +171,7 @@ const windowActions = {
    */
   setFrameTitle: function (frameProps, title) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FRAME_TITLE,
+      actionType: windowConstants.WINDOW_SET_FRAME_TITLE,
       frameProps,
       title
     })
@@ -183,7 +184,7 @@ const windowActions = {
    */
   setFindbarShown: function (frameProps, shown) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FINDBAR_SHOWN,
+      actionType: windowConstants.WINDOW_SET_FINDBAR_SHOWN,
       frameProps,
       shown
     })
@@ -196,7 +197,7 @@ const windowActions = {
    */
   setFindbarSelected: function (frameProps, selected) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FINDBAR_SELECTED,
+      actionType: windowConstants.WINDOW_SET_FINDBAR_SELECTED,
       frameProps,
       selected
     })
@@ -209,7 +210,7 @@ const windowActions = {
    */
   setPinned: function (frameProps, isPinned) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_PINNED,
+      actionType: windowConstants.WINDOW_SET_PINNED,
       frameProps,
       isPinned
     })
@@ -229,7 +230,7 @@ const windowActions = {
    */
   onWebviewLoadStart: function (frameProps, location) {
     dispatch({
-      actionType: WindowConstants.WINDOW_WEBVIEW_LOAD_START,
+      actionType: windowConstants.WINDOW_WEBVIEW_LOAD_START,
       frameProps,
       location
     })
@@ -242,7 +243,7 @@ const windowActions = {
    */
   onWebviewLoadEnd: function (frameProps) {
     dispatch({
-      actionType: WindowConstants.WINDOW_WEBVIEW_LOAD_END,
+      actionType: windowConstants.WINDOW_WEBVIEW_LOAD_END,
       frameProps
     })
   },
@@ -256,7 +257,7 @@ const windowActions = {
    */
   setFullScreen: function (frameProps, isFullScreen, showFullScreenWarning) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FULL_SCREEN,
+      actionType: windowConstants.WINDOW_SET_FULL_SCREEN,
       frameProps,
       isFullScreen,
       showFullScreenWarning
@@ -270,7 +271,7 @@ const windowActions = {
    */
   setNavBarFocused: function (focused) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_NAVBAR_FOCUSED,
+      actionType: windowConstants.WINDOW_SET_NAVBAR_FOCUSED,
       focused
     })
   },
@@ -284,23 +285,8 @@ const windowActions = {
    */
   newFrame: function (frameOpts, openInForeground) {
     dispatch({
-      actionType: WindowConstants.WINDOW_NEW_FRAME,
+      actionType: windowConstants.WINDOW_NEW_FRAME,
       frameOpts: frameOpts,
-      openInForeground
-    })
-  },
-
-  /**
-   * Dispatches a message to the store to clone an existing frame
-   *
-   * @param {Object} frameProps - The properties of the frame to clone
-   * @param {number} guestInstanceId - The guestInstanceId of the cloned webcontents
-   */
-  cloneFrame: function (frameProps, guestInstanceId, openInForeground) {
-    dispatch({
-      actionType: WindowConstants.WINDOW_CLONE_FRAME,
-      frameOpts: frameProps.toJS ? frameProps.toJS() : frameProps,
-      guestInstanceId,
       openInForeground
     })
   },
@@ -312,14 +298,13 @@ const windowActions = {
    * @param {Object} frameProps - The properties of the frame to close
    */
   closeFrame: function (frames, frameProps, forceClosePinned) {
-    const ipc = global.require('electron').ipcRenderer
+    const ipc = require('electron').ipcRenderer
     const origin = siteUtil.getOrigin(frameProps.get('location'))
     if (origin) {
       appActions.clearMessageBoxes(origin)
     }
     // If the frame was full screen, exit
     if (frameProps && frameProps.get('isFullScreen')) {
-      webviewActions.setFullScreen(false)
       this.setFullScreen(frameProps, false)
     }
     // Unless a caller explicitly specifies to close a pinned frame, then
@@ -351,7 +336,7 @@ const windowActions = {
     // close attempts
     if (nonPinnedFrames.size > 1 || pinnedFrames.size > 0) {
       dispatch({
-        actionType: WindowConstants.WINDOW_CLOSE_FRAME,
+        actionType: windowConstants.WINDOW_CLOSE_FRAME,
         frameProps
       })
     } else {
@@ -365,7 +350,7 @@ const windowActions = {
    */
   undoClosedFrame: function () {
     dispatch({
-      actionType: WindowConstants.WINDOW_UNDO_CLOSED_FRAME
+      actionType: windowConstants.WINDOW_UNDO_CLOSED_FRAME
     })
   },
 
@@ -374,7 +359,7 @@ const windowActions = {
    */
   clearClosedFrames: function () {
     dispatch({
-      actionType: WindowConstants.WINDOW_CLEAR_CLOSED_FRAMES
+      actionType: windowConstants.WINDOW_CLEAR_CLOSED_FRAMES
     })
   },
 
@@ -385,7 +370,7 @@ const windowActions = {
    */
   setActiveFrame: function (frameProps) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_ACTIVE_FRAME,
+      actionType: windowConstants.WINDOW_SET_ACTIVE_FRAME,
       frameProps: frameProps
     })
   },
@@ -398,7 +383,7 @@ const windowActions = {
   setFocusedFrame: function (frameProps) {
     if (frameProps) {
       dispatch({
-        actionType: WindowConstants.WINDOW_SET_FOCUSED_FRAME,
+        actionType: windowConstants.WINDOW_SET_FOCUSED_FRAME,
         frameProps: frameProps
       })
     }
@@ -412,7 +397,7 @@ const windowActions = {
    */
   setPreviewFrame: function (frameProps) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_PREVIEW_FRAME,
+      actionType: windowConstants.WINDOW_SET_PREVIEW_FRAME,
       frameProps: frameProps
     })
   },
@@ -424,7 +409,7 @@ const windowActions = {
    */
   setTabPageIndex: function (index) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_TAB_PAGE_INDEX,
+      actionType: windowConstants.WINDOW_SET_TAB_PAGE_INDEX,
       index
     })
   },
@@ -436,7 +421,7 @@ const windowActions = {
    */
   setPreviewTabPageIndex: function (previewTabPageIndex) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_PREVIEW_TAB_PAGE_INDEX,
+      actionType: windowConstants.WINDOW_SET_PREVIEW_TAB_PAGE_INDEX,
       previewTabPageIndex
     })
   },
@@ -448,7 +433,7 @@ const windowActions = {
    */
   setTabPageIndexByFrame: function (frameProps) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_TAB_PAGE_INDEX,
+      actionType: windowConstants.WINDOW_SET_TAB_PAGE_INDEX,
       frameProps
     })
   },
@@ -462,7 +447,7 @@ const windowActions = {
    */
   updateBackForwardState: function (frameProps, canGoBack, canGoForward) {
     dispatch({
-      actionType: WindowConstants.WINDOW_UPDATE_BACK_FORWARD,
+      actionType: windowConstants.WINDOW_UPDATE_BACK_FORWARD,
       frameProps,
       canGoBack,
       canGoForward
@@ -479,7 +464,7 @@ const windowActions = {
   setIsBeingDraggedOverDetail: function (dragType, dragOverKey, dragDetail) {
     dispatch({
       dragType,
-      actionType: WindowConstants.WINDOW_SET_IS_BEING_DRAGGED_OVER_DETAIL,
+      actionType: windowConstants.WINDOW_SET_IS_BEING_DRAGGED_OVER_DETAIL,
       dragOverKey,
       dragDetail
     })
@@ -494,7 +479,7 @@ const windowActions = {
    */
   moveTab: function (sourceFrameProps, destinationFrameProps, prepend) {
     dispatch({
-      actionType: WindowConstants.WINDOW_TAB_MOVE,
+      actionType: windowConstants.WINDOW_TAB_MOVE,
       sourceFrameProps,
       destinationFrameProps,
       prepend
@@ -509,7 +494,7 @@ const windowActions = {
    */
   setUrlBarSuggestions: function (suggestionList, selectedIndex) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL_BAR_SUGGESTIONS,
+      actionType: windowConstants.WINDOW_SET_URL_BAR_SUGGESTIONS,
       suggestionList,
       selectedIndex
     })
@@ -526,7 +511,19 @@ const windowActions = {
    */
   setUrlBarAutocompleteEnabled: function (enabled) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL_BAR_AUTCOMPLETE_ENABLED,
+      actionType: windowConstants.WINDOW_SET_URL_BAR_AUTCOMPLETE_ENABLED,
+      enabled
+    })
+  },
+
+  /*
+   * Sets if we should render URL bar suggestions.
+   *
+   * @param enabled If false URL bar suggestions will not be rendered.
+   */
+  setRenderUrlBarSuggestions: function (enabled) {
+    dispatch({
+      actionType: windowConstants.WINDOW_SET_RENDER_URL_BAR_SUGGESTIONS,
       enabled
     })
   },
@@ -539,7 +536,7 @@ const windowActions = {
    */
   setUrlBarPreview: function (value) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL_BAR_PREVIEW,
+      actionType: windowConstants.WINDOW_SET_URL_BAR_PREVIEW,
       value
     })
   },
@@ -553,7 +550,7 @@ const windowActions = {
    */
   setUrlBarSuggestionSearchResults: function (searchResults) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL_BAR_SUGGESTION_SEARCH_RESULTS,
+      actionType: windowConstants.WINDOW_SET_URL_BAR_SUGGESTION_SEARCH_RESULTS,
       searchResults
     })
   },
@@ -565,7 +562,7 @@ const windowActions = {
    */
   setUrlBarSelected: function (selected) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL_BAR_SELECTED,
+      actionType: windowConstants.WINDOW_SET_URL_BAR_SELECTED,
       selected
     })
   },
@@ -580,7 +577,7 @@ const windowActions = {
    */
   setUrlBarActive: function (isActive) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL_BAR_ACTIVE,
+      actionType: windowConstants.WINDOW_SET_URL_BAR_ACTIVE,
       isActive
     })
   },
@@ -592,7 +589,7 @@ const windowActions = {
    */
   setUrlBarFocused: function (isFocused) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_URL_BAR_FOCUSED,
+      actionType: windowConstants.WINDOW_SET_URL_BAR_FOCUSED,
       isFocused
     })
   },
@@ -606,7 +603,7 @@ const windowActions = {
    */
   setActiveFrameShortcut: function (frameProps, activeShortcut, activeShortcutDetails) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_ACTIVE_FRAME_SHORTCUT,
+      actionType: windowConstants.WINDOW_SET_ACTIVE_FRAME_SHORTCUT,
       frameProps,
       activeShortcut,
       activeShortcutDetails
@@ -619,7 +616,7 @@ const windowActions = {
    */
   setSearchDetail: function (searchDetail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_SEARCH_DETAIL,
+      actionType: windowConstants.WINDOW_SET_SEARCH_DETAIL,
       searchDetail
     })
   },
@@ -631,7 +628,7 @@ const windowActions = {
    */
   setFindDetail: function (frameProps, findDetail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FIND_DETAIL,
+      actionType: windowConstants.WINDOW_SET_FIND_DETAIL,
       frameProps,
       findDetail
     })
@@ -643,13 +640,17 @@ const windowActions = {
    * @param {Object} currentDetail - Properties of the bookmark to change to
    * @param {Object} originalDetail - Properties of the bookmark to edit
    * @param {Object} destinationDetail - Will move the added bookmark to the specified position
+   * @param {boolean} shouldShowLocation - Whether or not to show the URL input
+   * @param {boolean} isBookmarkHanger - true if triggered from star icon in nav bar
    */
-  setBookmarkDetail: function (currentDetail, originalDetail, destinationDetail) {
+  setBookmarkDetail: function (currentDetail, originalDetail, destinationDetail, shouldShowLocation, isBookmarkHanger) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_BOOKMARK_DETAIL,
+      actionType: windowConstants.WINDOW_SET_BOOKMARK_DETAIL,
       currentDetail,
       originalDetail,
-      destinationDetail
+      destinationDetail,
+      shouldShowLocation,
+      isBookmarkHanger
     })
   },
 
@@ -660,7 +661,7 @@ const windowActions = {
    */
   setContextMenuDetail: function (detail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_CONTEXT_MENU_DETAIL,
+      actionType: windowConstants.WINDOW_SET_CONTEXT_MENU_DETAIL,
       detail
     })
   },
@@ -672,7 +673,7 @@ const windowActions = {
    */
   setPopupWindowDetail: function (detail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_POPUP_WINDOW_DETAIL,
+      actionType: windowConstants.WINDOW_SET_POPUP_WINDOW_DETAIL,
       detail
     })
   },
@@ -685,7 +686,7 @@ const windowActions = {
    */
   setAudioMuted: function (frameProps, muted) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_AUDIO_MUTED,
+      actionType: windowConstants.WINDOW_SET_AUDIO_MUTED,
       frameProps,
       muted
     })
@@ -733,7 +734,7 @@ const windowActions = {
    */
   setAudioPlaybackActive: function (frameProps, audioPlaybackActive) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_AUDIO_PLAYBACK_ACTIVE,
+      actionType: windowConstants.WINDOW_SET_AUDIO_PLAYBACK_ACTIVE,
       frameProps,
       audioPlaybackActive
     })
@@ -749,7 +750,7 @@ const windowActions = {
    */
   setThemeColor: function (frameProps, themeColor, computedThemeColor) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_THEME_COLOR,
+      actionType: windowConstants.WINDOW_SET_THEME_COLOR,
       frameProps,
       themeColor,
       computedThemeColor
@@ -764,7 +765,7 @@ const windowActions = {
    */
   setFavicon: function (frameProps, favicon) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FAVICON,
+      actionType: windowConstants.WINDOW_SET_FAVICON,
       frameProps,
       favicon
     })
@@ -779,7 +780,7 @@ const windowActions = {
    */
   setLastZoomPercentage: function (frameProps, percentage) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_LAST_ZOOM_PERCENTAGE,
+      actionType: windowConstants.WINDOW_SET_LAST_ZOOM_PERCENTAGE,
       frameProps,
       percentage
     })
@@ -791,7 +792,7 @@ const windowActions = {
    */
   setMaximizeState: function (isMaximized) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_MAXIMIZE_STATE,
+      actionType: windowConstants.WINDOW_SET_MAXIMIZE_STATE,
       isMaximized
     })
   },
@@ -802,7 +803,7 @@ const windowActions = {
    */
   savePosition: function (position) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SAVE_POSITION,
+      actionType: windowConstants.WINDOW_SAVE_POSITION,
       position
     })
   },
@@ -813,7 +814,7 @@ const windowActions = {
    */
   saveSize: function (size) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SAVE_SIZE,
+      actionType: windowConstants.WINDOW_SAVE_SIZE,
       size
     })
   },
@@ -824,7 +825,7 @@ const windowActions = {
    */
   setWindowFullScreen: function (isFullScreen) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_FULLSCREEN_STATE,
+      actionType: windowConstants.WINDOW_SET_FULLSCREEN_STATE,
       isFullScreen
     })
   },
@@ -836,7 +837,7 @@ const windowActions = {
    */
   setMouseInTitlebar: function (mouseInTitlebar) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_MOUSE_IN_TITLEBAR,
+      actionType: windowConstants.WINDOW_SET_MOUSE_IN_TITLEBAR,
       mouseInTitlebar
     })
   },
@@ -848,7 +849,7 @@ const windowActions = {
    */
   setSiteInfoVisible: function (isVisible) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_SITE_INFO_VISIBLE,
+      actionType: windowConstants.WINDOW_SET_SITE_INFO_VISIBLE,
       isVisible
     })
   },
@@ -861,7 +862,7 @@ const windowActions = {
    */
   setBraveryPanelDetail: function (braveryPanelDetail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_BRAVERY_PANEL_DETAIL,
+      actionType: windowConstants.WINDOW_SET_BRAVERY_PANEL_DETAIL,
       braveryPanelDetail
     })
   },
@@ -873,7 +874,7 @@ const windowActions = {
    */
   setDownloadsToolbarVisible: function (isVisible) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_DOWNLOADS_TOOLBAR_VISIBLE,
+      actionType: windowConstants.WINDOW_SET_DOWNLOADS_TOOLBAR_VISIBLE,
       isVisible
     })
   },
@@ -885,7 +886,7 @@ const windowActions = {
    */
   setReleaseNotesVisible: function (isVisible) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_RELEASE_NOTES_VISIBLE,
+      actionType: windowConstants.WINDOW_SET_RELEASE_NOTES_VISIBLE,
       isVisible
     })
   },
@@ -898,7 +899,7 @@ const windowActions = {
    */
   setLinkHoverPreview: function (href, showOnRight) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_LINK_HOVER_PREVIEW,
+      actionType: windowConstants.WINDOW_SET_LINK_HOVER_PREVIEW,
       href,
       showOnRight
     })
@@ -913,7 +914,7 @@ const windowActions = {
    */
   setBlockedBy: function (frameProps, blockType, location) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_BLOCKED_BY,
+      actionType: windowConstants.WINDOW_SET_BLOCKED_BY,
       frameProps,
       blockType,
       location
@@ -928,7 +929,7 @@ const windowActions = {
    */
   setRedirectedBy: function (frameProps, ruleset, location) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_REDIRECTED_BY,
+      actionType: windowConstants.WINDOW_SET_REDIRECTED_BY,
       frameProps,
       ruleset,
       location
@@ -942,7 +943,7 @@ const windowActions = {
    */
   setNoScript: function (frameProps, source) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_NOSCRIPT,
+      actionType: windowConstants.WINDOW_SET_NOSCRIPT,
       frameProps,
       source
     })
@@ -954,7 +955,7 @@ const windowActions = {
    */
   setNoScriptVisible: function (isVisible) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_NOSCRIPT_VISIBLE,
+      actionType: windowConstants.WINDOW_SET_NOSCRIPT_VISIBLE,
       isVisible
     })
   },
@@ -965,7 +966,7 @@ const windowActions = {
    */
   addHistory: function (frameProps) {
     dispatch({
-      actionType: WindowConstants.WINDOW_ADD_HISTORY,
+      actionType: windowConstants.WINDOW_ADD_HISTORY,
       frameProps
     })
   },
@@ -975,7 +976,7 @@ const windowActions = {
    */
   setClearBrowsingDataDetail: function (clearBrowsingDataDetail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_CLEAR_BROWSING_DATA_DETAIL,
+      actionType: windowConstants.WINDOW_SET_CLEAR_BROWSING_DATA_DETAIL,
       clearBrowsingDataDetail
     })
   },
@@ -986,7 +987,7 @@ const windowActions = {
    */
   setImportBrowserDataDetail: function (importBrowserDataDetail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_IMPORT_BROWSER_DATA_DETAIL,
+      actionType: windowConstants.WINDOW_SET_IMPORT_BROWSER_DATA_DETAIL,
       importBrowserDataDetail
     })
   },
@@ -997,8 +998,25 @@ const windowActions = {
    */
   setImportBrowserDataSelected: function (selected) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_IMPORT_BROWSER_DATA_SELECTED,
+      actionType: windowConstants.WINDOW_SET_IMPORT_BROWSER_DATA_SELECTED,
       selected
+    })
+  },
+
+  widevineSiteAccessedWithoutInstall: function () {
+    dispatch({
+      actionType: windowConstants.WINDOW_WIDEVINE_SITE_ACCESSED_WITHOUT_INSTALL
+    })
+  },
+
+  /**
+   * Widevine popup detail changed
+   * @param {Object} widevinePanelDetail - detail of the widevine panel
+   */
+  widevinePanelDetailChanged: function (widevinePanelDetail) {
+    dispatch({
+      actionType: windowConstants.WINDOW_WIDEVINE_PANEL_DETAIL_CHANGED,
+      widevinePanelDetail
     })
   },
 
@@ -1009,7 +1027,7 @@ const windowActions = {
    */
   setAutofillAddressDetail: function (currentDetail, originalDetail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_AUTOFILL_ADDRESS_DETAIL,
+      actionType: windowConstants.WINDOW_SET_AUTOFILL_ADDRESS_DETAIL,
       currentDetail,
       originalDetail
     })
@@ -1022,7 +1040,7 @@ const windowActions = {
    */
   setAutofillCreditCardDetail: function (currentDetail, originalDetail) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_AUTOFILL_CREDIT_CARD_DETAIL,
+      actionType: windowConstants.WINDOW_SET_AUTOFILL_CREDIT_CARD_DETAIL,
       currentDetail,
       originalDetail
     })
@@ -1036,7 +1054,7 @@ const windowActions = {
    */
   setBlockedRunInsecureContent: function (frameProps, source) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_BLOCKED_RUN_INSECURE_CONTENT,
+      actionType: windowConstants.WINDOW_SET_BLOCKED_RUN_INSECURE_CONTENT,
       frameProps,
       source
     })
@@ -1049,7 +1067,7 @@ const windowActions = {
    */
   toggleMenubarVisible: function (isVisible) {
     dispatch({
-      actionType: WindowConstants.WINDOW_TOGGLE_MENUBAR_VISIBLE,
+      actionType: windowConstants.WINDOW_TOGGLE_MENUBAR_VISIBLE,
       isVisible
     })
   },
@@ -1062,7 +1080,7 @@ const windowActions = {
    */
   clickMenubarSubmenu: function (label) {
     dispatch({
-      actionType: WindowConstants.WINDOW_CLICK_MENUBAR_SUBMENU,
+      actionType: windowConstants.WINDOW_CLICK_MENUBAR_SUBMENU,
       label
     })
   },
@@ -1076,7 +1094,7 @@ const windowActions = {
    */
   resetMenuState: function () {
     dispatch({
-      actionType: WindowConstants.WINDOW_RESET_MENU_STATE
+      actionType: windowConstants.WINDOW_RESET_MENU_STATE
     })
   },
 
@@ -1089,7 +1107,7 @@ const windowActions = {
    */
   setSubmenuSelectedIndex: function (index) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_SUBMENU_SELECTED_INDEX,
+      actionType: windowConstants.WINDOW_SET_SUBMENU_SELECTED_INDEX,
       index
     })
   },
@@ -1104,7 +1122,7 @@ const windowActions = {
    */
   setLastFocusedSelector: function (selector) {
     dispatch({
-      actionType: WindowConstants.WINDOW_SET_LAST_FOCUSED_SELECTOR,
+      actionType: windowConstants.WINDOW_SET_LAST_FOCUSED_SELECTOR,
       selector
     })
   },
@@ -1117,9 +1135,63 @@ const windowActions = {
    */
   gotResponseDetails: function (tabId, details) {
     dispatch({
-      actionType: WindowConstants.WINDOW_GOT_RESPONSE_DETAILS,
+      actionType: windowConstants.WINDOW_GOT_RESPONSE_DETAILS,
       tabId,
       details
+    })
+  },
+
+  /**
+   * Fired when the mouse clicks or hovers over a bookmark folder in the bookmarks toolbar
+   * @param {number} folderId - from the siteDetail for the bookmark folder
+   *   If set to null, no menu is open. If set to -1, mouse is over a bookmark, not a folder
+   */
+  setBookmarksToolbarSelectedFolderId: function (folderId) {
+    dispatch({
+      actionType: windowConstants.WINDOW_SET_BOOKMARKS_TOOLBAR_SELECTED_FOLDER_ID,
+      folderId
+    })
+  },
+
+  /**
+   * Fired when window receives or loses focus
+   * @param {boolean} hasFocus - true if focused, false if blurred
+   */
+  onFocusChanged: function (hasFocus) {
+    dispatch({
+      actionType: windowConstants.WINDOW_ON_FOCUS_CHANGED,
+      hasFocus
+    })
+  },
+
+  /**
+   * Set Modal Dialog detail
+   * @param {string} className - name of modal dialog
+   * @param {Object} props - properties of the modal dialog
+   */
+  setModalDialogDetail: function (className, props) {
+    dispatch({
+      actionType: windowConstants.WINDOW_SET_MODAL_DIALOG_DETAIL,
+      className,
+      props
+    })
+  },
+
+  autofillSelectionClicked: function (tabId, value, frontEndId, index) {
+    dispatch({
+      actionType: windowConstants.WINDOW_AUTOFILL_SELECTION_CLICKED,
+      tabId,
+      value,
+      frontEndId,
+      index
+    })
+  },
+
+  autofillPopupHidden: function (tabId, notify = false) {
+    dispatch({
+      actionType: windowConstants.WINDOW_AUTOFILL_POPUP_HIDDEN,
+      tabId,
+      notify
     })
   }
 }

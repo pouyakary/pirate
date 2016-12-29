@@ -20,6 +20,7 @@ function config () {
           exclude: [
             /node_modules/,
             /\.min.js$/,
+            path.resolve(__dirname, 'app', 'browser', '*'),
             path.resolve(__dirname, 'app', 'extensions', '*')
           ],
           loader: 'babel'
@@ -31,6 +32,10 @@ function config () {
         {
           test: /\.css$/,
           loader: 'style-loader!css-loader'
+        },
+        {
+          test: /\.json$/,
+          loader: 'json'
         },
         // Loads font files for Font Awesome
         {
@@ -46,6 +51,9 @@ function config () {
     resolve: {
       extensions: ['', '.js', '.jsx']
     },
+    externals: {
+      'electron': 'chrome'
+    },
     plugins: [
       new WebpackNotifierPlugin({title: 'Brave-' + env}),
       new webpack.IgnorePlugin(/^\.\/stores\/appStore$/),
@@ -53,15 +61,15 @@ function config () {
       new webpack.DefinePlugin({
         'process.env': {
           NODE_ENV: JSON.stringify(env),
-          BRAVE_PORT: port,
-          GOOGLE_API_ENDPOINT: process.env.GOOGLE_API_ENDPOINT,
-          GOOGLE_API_KEY: process.env.GOOGLE_API_KEY
+          BRAVE_PORT: port
         }
       })
     ],
     node: {
+      process: false,
       __filename: true,
-      __dirname: true
+      __dirname: true,
+      fs: 'empty'
     }
   }
 }
@@ -69,7 +77,8 @@ function config () {
 function development () {
   var dev = config()
   dev.devServer = {
-    publicPath: 'http://localhost:' + port + '/gen/'
+    publicPath: 'http://localhost:' + port + '/gen/',
+    headers: { 'Access-Control-Allow-Origin': '*' }
   }
   return dev
 }
@@ -90,29 +99,44 @@ function production () {
 }
 
 function merge (config, env) {
-  var merged = Object.assign({}, config, env)
+  var merged = Object.assign({}, env, config)
   merged.plugins = (config.plugins || []).concat(env.plugins || [])
   return merged
 }
 
 var app = {
-  name: 'app',
-  target: 'electron',
-  entry: ['./js/entry.js'],
+  target: 'web',
+  entry: {
+    app: [ path.resolve(__dirname, 'js', 'entry.js') ],
+    aboutPages: [ path.resolve(__dirname, 'js', 'about', 'entry.js') ]
+  },
   output: {
     path: path.resolve(__dirname, 'app', 'extensions', 'brave', 'gen'),
-    filename: 'app.entry.js',
+    filename: '[name].entry.js',
     publicPath: './gen/'
   }
 }
 
-var aboutPages = {
-  name: 'about',
+var devTools = {
   target: 'web',
-  entry: ['./js/about/entry.js'],
+  entry: {
+    devTools: [ path.resolve(__dirname, 'js', 'devTools.js') ]
+  },
   output: {
     path: path.resolve(__dirname, 'app', 'extensions', 'brave', 'gen'),
-    filename: 'aboutPages.entry.js',
+    filename: 'lib.[name].js',
+    publicPath: './gen/',
+    library: '[name]'
+  }
+}
+
+var webtorrentPage = {
+  name: 'webtorrent',
+  target: 'web',
+  entry: ['./js/webtorrent/entry.js'],
+  output: {
+    path: path.resolve(__dirname, 'app', 'extensions', 'torrent', 'gen'),
+    filename: 'webtorrentPage.entry.js',
     publicPath: './gen/'
   }
 }
@@ -120,14 +144,17 @@ var aboutPages = {
 module.exports = {
   development: [
     merge(app, development()),
-    merge(aboutPages, development())
+    merge(devTools, development()),
+    merge(webtorrentPage, development())
   ],
   production: [
     merge(app, production()),
-    merge(aboutPages, production())
+    merge(devTools, production()),
+    merge(webtorrentPage, production())
   ],
   test: [
     merge(app, production()),
-    merge(aboutPages, production())
+    merge(devTools, production()),
+    merge(webtorrentPage, production())
   ]
 }[env]

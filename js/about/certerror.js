@@ -5,9 +5,9 @@
 const React = require('react')
 const Button = require('../components/button')
 const aboutActions = require('./aboutActions')
-const WindowConstants = require('../constants/windowConstants')
+const windowConstants = require('../constants/windowConstants')
 const messages = require('../constants/messages')
-const ipc = window.chrome.ipc
+const ipc = window.chrome.ipcRenderer
 
 require('../../less/button.less')
 require('../../less/window.less')
@@ -72,7 +72,7 @@ class CertErrorPage extends React.Component {
   onAccept () {
     aboutActions.acceptCertError(this.state.url)
     aboutActions.dispatchAction({
-      actionType: WindowConstants.WINDOW_SET_URL,
+      actionType: windowConstants.WINDOW_SET_URL,
       location: this.state.url,
       key: this.state.frameKey
     })
@@ -80,7 +80,7 @@ class CertErrorPage extends React.Component {
 
   onSafety () {
     aboutActions.dispatchAction({
-      actionType: WindowConstants.WINDOW_SET_URL,
+      actionType: windowConstants.WINDOW_SET_URL,
       location: this.state.previousLocation,
       key: this.state.frameKey
     })
@@ -138,10 +138,9 @@ class CertErrorPage extends React.Component {
       <div className='buttons'>
         <Button l10nId='certErrorSafety' className='actionButton' onClick={this.onSafety.bind(this)} />
         {this.state.url ? (this.state.advanced
-          ? (<div>
-            <Button l10nId='certErrorButtonText' className='subtleButton' onClick={this.onAccept.bind(this)} />
-            <Button l10nId='certErrorShowCertificate' className='subtleButton' onClick={this.onDetail.bind(this)} />
-          </div>)
+          ? (<Button l10nId='certErrorButtonText' className='subtleButton' onClick={this.onAccept.bind(this)} />) : null) : null}
+        {this.state.url ? (this.state.advanced
+          ? (<Button l10nId='certErrorShowCertificate' className='subtleButton' onClick={this.onDetail.bind(this)} />)
           : <Button l10nId='certErrorAdvanced' className='subtleButton' onClick={this.onAdvanced.bind(this)} />) : null}
       </div>
     </div>

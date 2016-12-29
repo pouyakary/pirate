@@ -1,5 +1,25 @@
 @import "variables.less";
 
+input,
+select {
+  box-sizing: border-box;
+}
+
+.form-control {
+  display: block;
+  background: white;
+  border: solid 1px @lightGray;
+  border-radius: @borderRadius;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+  box-sizing: border-box;
+  color: @darkGray;
+  font-size: 14.5px;
+  height: 2.25em;
+  outline: none;
+  padding: 0.4em;
+  width: 100%;
+}
+
 .flyoutDialog {
   background-color: @toolbarBackground;
   border-radius: @borderRadius;
@@ -9,7 +29,7 @@
   padding: 10px 30px;
   position: absolute;
   text-align: left;
-  top: 30px;
+  top: @dialogTopOffset;
 }
 
 .releaseNotes {
@@ -41,12 +61,11 @@
       }
 
       ul {
-        font-size: smaller;
         max-height: 300px;
         overflow-y: auto;
         margin-top: -20px;
         padding: 0 10px;
-        max-width: 350px;
+        max-width: 400px;
       }
     }
   }
@@ -97,6 +116,50 @@
   }
 }
 
+.commonDialog {
+  .commonForm {
+    .flyoutDialog;
+    background-color: #f7f7f7;
+    border-radius: @borderRadius;
+    max-width: 422px;
+    padding: 0;
+    text-align: left;
+    max-width: 600px;
+    -webkit-user-select: none;
+    cursor: default;
+    color: #3B3B3B;
+    overflow-y: auto;
+    max-height: 100%;
+
+    .clickable {
+      color: #5B5B5B;
+      &:hover {
+        color: #000;
+      }
+    }
+
+    .formSection {
+      padding: 16px 30px;
+      &.commonFormTitle {
+        color: #ff5000;
+        font-size: 1.2em;
+      }
+      &.commonFormButtons {
+        text-align: center;
+      }
+      &.commonFormBottom {
+        background-color: #dddee0;
+        text-align: center;
+      }
+      .commonFormButtonGroup {
+        margin: 0 auto;
+        display: inline-block;
+      }
+    }
+  }
+}
+
+// TODO: Make this use commonDialog
 .importBrowserDataPanel {
   .importBrowserData {
     .flyoutDialog;
@@ -135,7 +198,7 @@
       }
 
       &.importBrowserSubDataOptions {
-        padding: 0 10px;
+        padding: 0 0 0 20px;
       }
 
       &.importBrowserDataButtons {
@@ -146,6 +209,7 @@
   }
 }
 
+// TODO: Make this use commonDialog
 .manageAutofillDataPanel {
   .manageAutofillData {
     .flyoutDialog;
@@ -196,6 +260,64 @@
   }
 }
 
+// TODO: Make this use commonDialog
+.checkDefaultBrowserDialog {
+  .checkDefaultBrowser {
+    .flyoutDialog;
+    background-color: #f7f7f7;
+    border-radius: @borderRadius;
+    max-width: 422px;
+    padding: 1;
+    text-align: left;
+    width: 614px;
+    height: 120px;
+    -webkit-user-select: none;
+    cursor: default;
+    color: #3B3B3B;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    max-height: 100%;
+
+    .clickable {
+      color: #5B5B5B;
+      &:hover {
+        color: #000;
+      }
+    }
+
+    .checkDefaultBrowserButtons {
+      text-align: right;
+      padding: 16px 10px;
+      position: relative;
+      top: -30px;
+    }
+
+    .makeBraveDefault {
+      font-weight: bold;
+      display: inline-block;
+      position: relative;
+      top: -35px;
+      margin-left: 15px;
+    }
+
+    .braveIcon {
+      background-image: -webkit-image-set(url(../app/extensions/brave/img/braveAbout.png) 2x);
+      background-repeat: no-repeat;
+      height: 64px;
+      width: 64px;
+      display: inline-block;
+      position: relative;
+      top: 10px;
+    }
+
+    .checkDefaultOnStartup {
+      left: 75px;
+      position: relative;
+      top: -25px;
+    }
+  }
+}
+
 
 .braveryPanelContainer {
   .braveryPanel {
@@ -203,13 +325,13 @@
     border-radius: @borderRadius;
     padding: 0;
     text-align: left;
-    width: 473px;
+    width: 500px;
     right: 20px;
     -webkit-user-select: none;
     cursor: default;
     color: #3B3B3B;
     overflow-y: auto;
-    max-height: 100%;
+    max-height: calc(~'100% - @{dialogTopOffset}');
 
     .clickable {
       color: #5B5B5B;
@@ -265,19 +387,19 @@
 
       .braveryStat {
         font-size: 40px;
-        color: @chromeText;
+        color: @statsGray;
 
         &.adsBlockedStat {
-          color: #fe521d;
+          color: @statsRed;
         }
         &.trackersBlockedStat {
-          color: #f39030;
+          color: @statsOrange;
         }
         &.redirectedResourcesStat {
-          color: #0796fa;
+          color: @statsBlue;
         }
         &.fpStat {
-          color: #ffc000;
+          color: @statsYellow;
         }
       }
       .statDisabled {
@@ -312,6 +434,7 @@
         .braveryAdvancedIndicator {
           margin-left: 5px;
           margin-right: 5px;
+          margin-top: 2px;
         }
       }
 
@@ -330,6 +453,7 @@
         }
 
         select {
+          font-size: 13px;
           margin-bottom: 25px;
         }
       }
@@ -391,7 +515,7 @@
 }
 
 .noScriptInfo {
-  >div {
+  .dialogInner {
     .flyoutDialog;
     right: 20px;
     width: auto;
@@ -399,12 +523,125 @@
     text-align: center;
     font-size: 15px;
     cursor: default;
+
+    .truncate {
+      margin-bottom: 5px;
+    }
   }
 }
 
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.dialog > .bookmarkDialog {
+  width: 350px;
+  position: absolute;
+  top: 30px;
+}
+
+.dialog > .bookmarkDialog > .bookmarkForm {
+  width: 350px;
+}
+
+.dialog > .bookmarkDialog .fa-close {
+  color: @buttonColor;
+  font-size: 16px;
+  float: right;
+  margin-top: 7px;
+  margin-right: 10px;
+  &:hover {
+    color: #000;
+  }
+}
+
+.bookmarkForm {
+  .genericForm;
+  background: linear-gradient(#FFFFFF, #DEDEDE);
+  margin-top: 10px;
+  padding: 0;
+  min-width: 310px;
+
+  .arrowUp {
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #FFFFFF;
+    position: relative;
+    bottom: 10px;
+    left: 37px;
+
+    &.withHomeButton {
+      left: 61px;
+    }
+  }
+
+  .bookmarkFormRow {
+    margin-bottom: 10px;
+  }
+
+  .bookmarkButtons {
+    display: flex;
+    justify-content: flex-end;
+    margin: 20px 0 10px;
+  }
+
+  .bookmarkFormInner {
+    padding: 10px 30px;
+
+    h2 {
+      -webkit-user-select: none;
+      cursor: default;
+        min-width: 250px;
+    }
+  }
+
+  label {
+    color: @darkGray;
+    margin-left: 5px;
+  }
+
+  h2 {
+    color: @braveOrange;
+    font-weight: normal;
+    font-size: 16px;
+  }
+
+  input,
+  select {
+    display: block;
+    width: 100%;
+    max-width: 250px;
+    height: 25px;
+    border-radius: 5px;
+    padding: 0 5px;
+    margin: 5px 0 5px 0;
+    font-size: 0.9em;
+    border: solid 1px #ececec;
+    background: white;
+    color: #444444;
+    outline: none;
+  }
+
+  input {
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  }
+
+  select {
+    box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, 0.8);
+  }
+}
+
+.bookmarkFormFooter {
+  background: @black10;
+  padding: 10px 30px;
+
+  span {
+    font-size: 12px;
+    text-align: left;
+  }
 }
 
 .genericForm {
@@ -454,7 +691,6 @@
 #navigator {
   .urlBarSuggestions {
     .flyoutDialog;
-    box-sizing: border-box;
     color: @chromeText;
     left: 0;
     overflow-y: auto;

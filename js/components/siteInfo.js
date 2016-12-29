@@ -60,7 +60,7 @@ class SiteInfo extends ImmutableComponent {
           'fa-lock': true,
           extendedValidation: this.isExtendedValidation
         })} /><span data-l10n-id='secureConnection' /></li>
-    } else if (this.runInsecureContent) {
+    } else if (this.isSecure && this.runInsecureContent) {
       secureIcon = <li><span className='fa fa-unlock' /><span data-l10n-id='mixedConnection' /></li>
     } else {
       secureIcon = <li><span className='fa fa-unlock' /><span data-l10n-id='insecureConnection' data-l10n-args={JSON.stringify(l10nArgs)} /></li>
@@ -77,29 +77,35 @@ class SiteInfo extends ImmutableComponent {
         <span data-l10n-args={JSON.stringify(l10nArgs)} data-l10n-id='sessionInfo' /></li>
     }
 
-    let runInsecureContentInfo = null
+    let connectionInfo = null
     if (this.isBlockedRunInsecureContent) {
-      runInsecureContentInfo =
+      connectionInfo =
         <li>
           <ul>
             <li><span className='runInsecureContentWarning' data-l10n-id='runInsecureContentWarning' /></li>
             <li>
-              <Button l10nId='allowRunInsecureContent' className='secondaryAltButton allowRunInsecureContentButton' onClick={this.onAllowRunInsecureContent} />
+              <Button l10nId='allowRunInsecureContent' className='whiteButton allowRunInsecureContentButton' onClick={this.onAllowRunInsecureContent} />
               <Button l10nId='dismissAllowRunInsecureContent' className='primaryButton dismissAllowRunInsecureContentButton' onClick={this.props.onHide} />
             </li>
           </ul>
         </li>
     } else if (this.runInsecureContent) {
-      runInsecureContentInfo =
+      connectionInfo =
         <li>
           <ul>
             <li><span className='denyRunInsecureContentWarning' data-l10n-id='denyRunInsecureContentWarning' /></li>
             <li>
               <Button l10nId='denyRunInsecureContent' className='primaryButton denyRunInsecureContentButton' onClick={this.onDenyRunInsecureContent} />
-              <Button l10nId='dismissDenyRunInsecureContent' className='secondaryAltButton dismissDenyRunInsecureContentButton' onClick={this.props.onHide} />
+              <Button l10nId='dismissDenyRunInsecureContent' className='whiteButton dismissDenyRunInsecureContentButton' onClick={this.props.onHide} />
             </li>
           </ul>
         </li>
+    } else if (this.isSecure) {
+      connectionInfo =
+        <div className='connectionInfo' data-l10n-id='secureConnectionInfo' />
+    } else {
+      connectionInfo =
+        <div className='connectionInfo' data-l10n-id='insecureConnectionInfo' />
     }
 
     return <Dialog onHide={this.props.onHide} className='siteInfo' isClickDismiss>
@@ -111,7 +117,7 @@ class SiteInfo extends ImmutableComponent {
           partitionInfo
         }
         {
-          runInsecureContentInfo
+          connectionInfo
         }
       </ul>
     </Dialog>

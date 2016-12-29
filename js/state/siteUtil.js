@@ -3,9 +3,11 @@
 
 'use strict'
 const Immutable = require('immutable')
+const normalizeUrl = require('normalize-url')
 const siteTags = require('../constants/siteTags')
 const settings = require('../constants/settings')
 const getSetting = require('../settings').getSetting
+const UrlUtil = require('../lib/urlutil')
 const urlParse = require('url').parse
 
 const isBookmark = (tags) => {
@@ -81,6 +83,64 @@ module.exports.getNextFolderId = (sites) => {
   return (maxIdItem ? (maxIdItem.get('folderId') || 0) : 0) + 1
 }
 
+// Some details can be copied from the existing siteDetail if null
+// ex: parentFolderId, partitionNumber, and favicon
+const mergeSiteDetails = (oldSiteDetail, newSiteDetail, tag, folderId) => {
+  let tags = oldSiteDetail && oldSiteDetail.get('tags') || new Immutable.List()
+  if (tag) {
+    tags = tags.toSet().add(tag).toList()
+  }
+
+  const customTitle = typeof newSiteDetail.get('customTitle') === 'string'
+    ? newSiteDetail.get('customTitle')
+    : (newSiteDetail.get('customTitle') || oldSiteDetail && oldSiteDetail.get('customTitle'))
+
+  let lastAccessedTime
+  if (isBookmark(tag) || isBookmarkFolder(tag)) {
+    lastAccessedTime = newSiteDetail.get('lastAccessedTime') || 0
+  } else {
+    lastAccessedTime = newSiteDetail.get('lastAccessedTime') || new Date().getTime()
+  }
+
+  let site = Immutable.fromJS({
+    lastAccessedTime: lastAccessedTime,
+    tags,
+    title: newSiteDetail.get('title')
+  })
+
+  if (newSiteDetail.get('location')) {
+    site = site.set('location', newSiteDetail.get('location'))
+  }
+  if (folderId) {
+    site = site.set('folderId', Number(folderId))
+  }
+  if (typeof customTitle === 'string') {
+    site = site.set('customTitle', customTitle)
+  }
+  if (newSiteDetail.get('parentFolderId') !== undefined || oldSiteDetail && oldSiteDetail.get('parentFolderId')) {
+    let parentFolderId = newSiteDetail.get('parentFolderId') !== undefined
+      ? newSiteDetail.get('parentFolderId') : oldSiteDetail.get('parentFolderId')
+    site = site.set('parentFolderId', Number(parentFolderId))
+  }
+  if (newSiteDetail.get('partitionNumber') !== undefined || oldSiteDetail && oldSiteDetail.get('partitionNumber')) {
+    let partitionNumber = newSiteDetail.get('partitionNumber') !== undefined
+    ? newSiteDetail.get('partitionNumber') : oldSiteDetail.get('partitionNumber')
+    site = site.set('partitionNumber', Number(partitionNumber))
+  }
+  if (newSiteDetail.get('favicon') || oldSiteDetail && oldSiteDetail.get('favicon')) {
+    site = site.set('favicon', newSiteDetail.get('favicon') || oldSiteDetail.get('favicon'))
+  }
+  if (newSiteDetail.get('themeColor') || oldSiteDetail && oldSiteDetail.get('themeColor')) {
+    site = site.set('themeColor', newSiteDetail.get('themeColor') || oldSiteDetail.get('themeColor'))
+  }
+  if (site.get('tags').size === 0) {
+    // Increment the visit count for history items
+    site = site.set('count', ((oldSiteDetail || site).get('count') || 0) + 1)
+  }
+
+  return site
+}
+
 /**
  * Adds or updates the specified siteDetail in sites.
  *
@@ -101,65 +161,32 @@ module.exports.addSite = function (sites, siteDetail, tag, originalSiteDetail) {
   if (tag === undefined) {
     tag = siteDetail.getIn(['tags', 0])
   }
+
   const index = module.exports.getSiteIndex(sites, originalSiteDetail || siteDetail, tag)
   const oldSite = index !== -1 ? sites.getIn([index]) : null
-
   let folderId = siteDetail.get('folderId')
-  if (!folderId && tag === siteTags.BOOKMARK_FOLDER) {
-    folderId = module.exports.getNextFolderId(sites)
-  }
 
-  // Remove duplicate folder
-  if (!oldSite && tag === siteTags.BOOKMARK_FOLDER) {
-    const dupFolder = sites.find((site) => isBookmarkFolder(site.get('tags')) &&
-      site.get('parentFolderId') === siteDetail.get('parentFolderId') &&
-      site.get('customTitle') === siteDetail.get('customTitle'))
-    if (dupFolder) {
-      sites = module.exports.removeSite(sites, dupFolder, siteTags.BOOKMARK_FOLDER)
+  if (tag === siteTags.BOOKMARK_FOLDER) {
+    if (!oldSite && folderId) {
+      // Remove duplicate folder (needed for import)
+      const dupFolder = sites.find((site) => isBookmarkFolder(site.get('tags')) &&
+        site.get('parentFolderId') === siteDetail.get('parentFolderId') &&
+        site.get('customTitle') === siteDetail.get('customTitle'))
+      if (dupFolder) {
+        sites = module.exports.removeSite(sites, dupFolder, siteTags.BOOKMARK_FOLDER)
+      }
+    } else if (!folderId) {
+      // Assign an id if this is a new folder
+      folderId = module.exports.getNextFolderId(sites)
     }
   }
 
-  let tags = index !== -1 && sites.getIn([index, 'tags']) || new Immutable.List()
-  if (tag) {
-    tags = tags.toSet().add(tag).toList()
-  }
-
-  const customTitle = typeof siteDetail.get('customTitle') === 'string' ? siteDetail.get('customTitle') : (siteDetail.get('customTitle') || oldSite && oldSite.get('customTitle'))
-  let site = Immutable.fromJS({
-    lastAccessedTime: siteDetail.get('lastAccessedTime') || new Date().getTime(),
-    tags,
-    title: siteDetail.get('title')
-  })
-  if (siteDetail.get('location')) {
-    site = site.set('location', siteDetail.get('location'))
-  }
-  if (folderId) {
-    site = site.set('folderId', Number(folderId))
-  }
-  if (typeof customTitle === 'string') {
-    site = site.set('customTitle', customTitle)
-  }
-  if (siteDetail.get('parentFolderId') !== undefined || oldSite && oldSite.get('parentFolderId')) {
-    let parentFolderId = siteDetail.get('parentFolderId') !== undefined
-      ? siteDetail.get('parentFolderId') : oldSite.get('parentFolderId')
-    site = site.set('parentFolderId', Number(parentFolderId))
-  }
-  if (siteDetail.get('partitionNumber') !== undefined || oldSite && oldSite.get('partitionNumber')) {
-    let partitionNumber = siteDetail.get('partitionNumber') !== undefined
-    ? siteDetail.get('partitionNumber') : oldSite.get('partitionNumber')
-    site = site.set('partitionNumber', Number(partitionNumber))
-  }
-  if (siteDetail.get('favicon') || oldSite && oldSite.get('favicon')) {
-    site = site.set('favicon', siteDetail.get('favicon') || oldSite.get('favicon'))
-  }
-  if (siteDetail.get('themeColor') || oldSite && oldSite.get('themeColor')) {
-    site = site.set('themeColor', siteDetail.get('themeColor') || oldSite.get('themeColor'))
-  }
-
+  let site = mergeSiteDetails(oldSite, siteDetail, tag, folderId)
   if (index === -1) {
+    // Insert new entry
     return sites.push(site)
   }
-
+  // Update existing entry
   return sites.setIn([index], site)
 }
 
@@ -202,14 +229,41 @@ module.exports.removeSite = function (sites, siteDetail, tag) {
     .setIn([index, 'tags'], tags.toSet().remove(tag).toList())
 }
 
-function fillParentFolders (parentFolderIds, bookmarkFolder, allBookmarks) {
+/**
+ * Called by isMoveAllowed
+ * Trace a folder's ancestory, collecting all parent folderIds until reaching Bookmarks Toolbar (folderId=0)
+ */
+const getAncestorFolderIds = (parentFolderIds, bookmarkFolder, allBookmarks) => {
   if (bookmarkFolder.get('parentFolderId')) {
     parentFolderIds.push(bookmarkFolder.get('parentFolderId'))
     const nextItem = allBookmarks.find((item) => item.get('folderId') === bookmarkFolder.get('parentFolderId'))
     if (nextItem) {
-      fillParentFolders(parentFolderIds, nextItem, allBookmarks)
+      getAncestorFolderIds(parentFolderIds, nextItem, allBookmarks)
     }
   }
+}
+
+/**
+ * Determine if a proposed move is valid
+ *
+ * @param sites The application state's Immutable sites list
+ * @param siteDetail The site detail to move
+ * @param destinationDetail The site detail to move to
+ */
+module.exports.isMoveAllowed = (sites, sourceDetail, destinationDetail) => {
+  if (typeof destinationDetail.get('parentFolderId') === 'number' && typeof sourceDetail.get('folderId') === 'number') {
+    // Folder can't be its own parent
+    if (sourceDetail.get('folderId') === destinationDetail.get('folderId')) {
+      return false
+    }
+    // Ancestor folder can't be moved into a descendant
+    let ancestorFolderIds = []
+    getAncestorFolderIds(ancestorFolderIds, destinationDetail, sites)
+    if (ancestorFolderIds.includes(sourceDetail.get('folderId'))) {
+      return false
+    }
+  }
+  return true
 }
 
 /**
@@ -224,20 +278,14 @@ function fillParentFolders (parentFolderIds, bookmarkFolder, allBookmarks) {
  * @return The new sites Immutable object
  */
 module.exports.moveSite = function (sites, sourceDetail, destinationDetail, prepend, destinationIsParent, disallowReparent) {
-  // Disallow loops
-  let parentFolderIds = []
-  if (destinationDetail.get('parentFolderId') && sourceDetail.get('folderId')) {
-    fillParentFolders(parentFolderIds, destinationDetail, sites)
-    if (sourceDetail.get('folderId') === destinationDetail.get('folderId') ||
-        parentFolderIds.includes(sourceDetail.get('folderId'))) {
-      return sites
-    }
+  if (!module.exports.isMoveAllowed(sites, sourceDetail, destinationDetail)) {
+    return sites
   }
 
   const sourceSiteIndex = module.exports.getSiteIndex(sites, sourceDetail, sourceDetail.get('tags'))
   let destinationSiteIndex
   if (destinationIsParent) {
-    // When the destinatiaon is the parent we want to put it at the end
+    // When the destination is the parent we want to put it at the end
     destinationSiteIndex = sites.size - 1
     prepend = false
   } else {
@@ -278,6 +326,62 @@ module.exports.getDetailFromFrame = function (frame, tag) {
     favicon: frame.get('icon'),
     themeColor: frame.get('themeColor') || frame.get('computedThemeColor')
   })
+}
+
+/**
+ * Update the favicon URL for all entries in the sites list
+ * which match a given location. Currently, there should only be
+ * one match, but this will handle multiple.
+ *
+ * @param sites The application state's Immutable sites list
+ * @param location URL for the entry needing an update
+ * @param favicon favicon URL
+ */
+module.exports.updateSiteFavicon = function (sites, location, favicon) {
+  if (UrlUtil.isNotURL(location)) {
+    return sites
+  }
+
+  const matchingIndices = []
+
+  sites.filter((site, index) => {
+    if (!site || typeof site.get !== 'function') {
+      return false
+    }
+    if (isBookmarkFolder(site.get('tags'))) {
+      return false
+    }
+    if (UrlUtil.isNotURL(site.get('location'))) {
+      return false
+    }
+    if (normURL(site.get('location')) === normURL(location)) {
+      matchingIndices.push(index)
+      return true
+    }
+    return false
+  })
+
+  if (!matchingIndices.length) return sites
+
+  let updatedSites = sites
+  matchingIndices.forEach((index) => {
+    updatedSites = updatedSites.setIn([index, 'favicon'], favicon)
+  })
+
+  return updatedSites
+}
+
+/**
+ * Normalizes a URL for comparison, with special handling for magnet links
+ */
+function normURL (url) {
+  const lowerURL = url.toLowerCase()
+  if (lowerURL.startsWith('magnet:?')) return lowerURL
+  try {
+    return normalizeUrl(url)
+  } catch (e) {
+    return url
+  }
 }
 
 /**

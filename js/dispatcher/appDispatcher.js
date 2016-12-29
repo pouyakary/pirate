@@ -4,7 +4,7 @@
 
 const Serializer = require('./serializer')
 const messages = require('../constants/messages')
-const electron = process.type === 'renderer' ? global.require('electron') : require('electron')
+const electron = require('electron')
 'use strict'
 
 class AppDispatcher {
@@ -117,21 +117,27 @@ if (process.type === 'browser') {
 
     let queryInfo = payload.queryInfo || payload.frameProps || (payload.queryInfo = {})
     queryInfo = queryInfo.toJS ? queryInfo.toJS() : queryInfo
-    if (event.sender.hostWebContents) {
+    if (!event.sender.isDestroyed() && event.sender.hostWebContents) {
       // received from an extension
       // only extension messages will have a hostWebContents
-      let win = require('electron').BrowserWindow.fromWebContents(event.sender.hostWebContents)
+      // because other messages come from the main window
+
       // default to the windowId of the hostWebContents
-      queryInfo.windowId = queryInfo.windowId || win.id
+      if (!queryInfo.windowId) {
+        let win = require('electron').BrowserWindow.fromWebContents(event.sender.hostWebContents)
+        if (!win) {
+          return
+        }
+        queryInfo.windowId = win.id
+      }
       // add queryInfo if we only had frameProps before
       payload.queryInfo = queryInfo
+      payload.senderTabId = event.sender.getId()
 
-      appDispatcher.dispatch(payload, event.sender.hostWebContents)
+      appDispatcher.dispatch(payload)
     } else {
       // received from a browser window
-      if (event.sender.id !== queryInfo.windowId) {
-        appDispatcher.dispatch(payload, event.sender)
-      }
+      appDispatcher.dispatch(payload)
     }
   })
 }

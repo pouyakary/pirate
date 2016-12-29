@@ -4,16 +4,19 @@
 
 const AppDispatcher = require('../dispatcher/appDispatcher')
 const AppStore = require('../stores/appStore')
-const AppConstants = require('../constants/appConstants')
+const appConstants = require('../constants/appConstants')
 const appConfig = require('../constants/appConfig')
 const config = require('../constants/config')
+const { registerContentSettings } = require('../../app/browser/contentSettings/hostContentSettings')
+const {makeImmutable} = require('../../app/common/state/immutableUtil')
+const Immutable = require('immutable')
 const settings = require('../constants/settings')
 const {cookieExceptions, localStorageExceptions} = require('../data/siteHacks')
-const {passwordManagers, defaultPasswordManager} = require('../constants/passwordManagers')
+const {defaultPasswordManager} = require('../constants/passwordManagers')
 const urlParse = require('url').parse
 const siteSettings = require('./siteSettings')
-const {setUserPref} = require('./userPrefs')
-const {getSetting} = require('../settings')
+const { registerUserPrefs } = require('./userPrefs')
+const { getSetting } = require('../settings')
 
 // backward compatibility with appState siteSettings
 const parseSiteSettingsPattern = (pattern) => {
@@ -22,28 +25,133 @@ const parseSiteSettingsPattern = (pattern) => {
   return '[*.]' + parsed.host
 }
 
-const addContentSettings = (settingList, hostPattern, secondaryPattern = undefined, setting = 'block') => {
-  let contentSettingsPattern = parseSiteSettingsPattern(hostPattern)
-  settingList.push({
+const toContentSetting = (primaryPattern, secondaryPattern = undefined, setting = 'block', resourceId = undefined) => {
+  return Immutable.fromJS({
     setting,
+    primaryPattern,
     secondaryPattern,
-    primaryPattern: contentSettingsPattern
+    resourceId
   })
 }
 
-const getPasswordManagerEnabled = (appState) => {
-  let appSettings = appState.get('settings')
-  if (appSettings) {
-    const passwordManager = getSetting(settings.ACTIVE_PASSWORD_MANAGER, appSettings)
-    if (typeof passwordManager === 'string') {
-      return passwordManager === passwordManagers.BUILT_IN
-    }
+const addContentSettings = (contentSettings, key, primaryPattern, secondaryPattern, setting, resourceId) => {
+  let contentSettingsForKey = contentSettings.get(key)
+  if (!contentSettingsForKey) {
+    return contentSettings
+  } else {
+    contentSettingsForKey = contentSettingsForKey.push(toContentSetting(primaryPattern, secondaryPattern, setting, resourceId))
+    return contentSettings.set(key, contentSettingsForKey)
   }
-  return defaultPasswordManager === passwordManagers.BUILT_IN
 }
 
-const getBlock3rdPartyStorage = (braveryDefaults) => {
-  if (braveryDefaults.cookieControl === 'block3rdPartyCookie') {
+// Content settings handled by HostContentSettingsMap in Muon
+const getDefaultHostContentSettings = (braveryDefaults, appSettings, appConfig) => {
+  return Immutable.fromJS({
+    plugins: getDefaultPluginSettings(braveryDefaults, appSettings, appConfig)
+  })
+}
+
+// Content settings currently handled by UserPrefs in Muon
+// Usage of these settings is deprecated and we should be transitioning to HostContentSettings
+// Check with @bridiver before adding additional user pref content settings
+const getDefaultUserPrefContentSettings = (braveryDefaults, appSettings, appConfig) => {
+  braveryDefaults = makeImmutable(braveryDefaults)
+  return Immutable.fromJS({
+    cookies: getDefault3rdPartyStorageSettings(braveryDefaults, appSettings, appConfig),
+    referer: [{
+      setting: braveryDefaults.get('cookieControl') === 'block3rdPartyCookie' ? 'block' : 'allow',
+      primaryPattern: '*'
+    }],
+    adInsertion: [{
+      setting: braveryDefaults.get('adControl') === 'showBraveAds' ? 'allow' : 'block',
+      primaryPattern: '*'
+    }],
+    ads: [{
+      setting: ['blockAds', 'showBraveAds'].includes(braveryDefaults.get('adControl')) ? 'block' : 'allow',
+      primaryPattern: '*'
+    }],
+    doNotTrack: [{
+      setting: getSetting(settings.DO_NOT_TRACK, appSettings) ? 'allow' : 'block',
+      primaryPattern: '*'
+    }],
+    passwordManager: getDefaultPasswordManagerSettings(braveryDefaults, appSettings, appConfig),
+    javascript: [{
+      setting: braveryDefaults.get('noScript') ? 'block' : 'allow',
+      primaryPattern: '*'
+    }, {
+      setting: 'allow',
+      secondaryPattern: '*',
+      primaryPattern: 'chrome-extension://*'
+    }],
+    canvasFingerprinting: [{
+      setting: braveryDefaults.get('fingerprintingProtection') ? 'block' : 'allow',
+      primaryPattern: '*'
+    }],
+    runInsecureContent: [{
+      setting: 'block',
+      primaryPattern: '*'
+    }],
+    flashEnabled: [{
+      setting: braveryDefaults.get('flash') ? 'allow' : 'block',
+      primaryPattern: '*'
+    }],
+    popups: [{
+      setting: 'block',
+      primaryPattern: '*'
+    }],
+    plugins: getDefaultPluginSettings(braveryDefaults, appSettings, appConfig)
+  })
+}
+
+const getDefaultPasswordManagerSettings = (braveryDefaults, appSettings, appConfig) => {
+  let bravePasswordManagerSetting = 'block'
+  if (appSettings) {
+    const passwordManager = getSetting(settings.ACTIVE_PASSWORD_MANAGER, appSettings)
+    let useBuiltIn = passwordManager === defaultPasswordManager
+    bravePasswordManagerSetting = useBuiltIn ? 'allow' : 'block'
+  }
+
+  return [
+    {
+      setting: bravePasswordManagerSetting,
+      primaryPattern: '*'
+    }
+  ]
+}
+
+const getDefaultPluginSettings = (braveryDefaults, appSettings, appConfig) => {
+  return [
+    {
+      setting: 'block',
+      primaryPattern: '*'
+    },
+    {
+      setting: 'block',
+      resourceId: appConfig.flash.resourceId,
+      primaryPattern: '*'
+    },
+    {
+      setting: 'block',
+      resourceId: appConfig.widevine.resourceId,
+      primaryPattern: '*'
+    },
+    // allow autodetction of flash install by adobe
+    {
+      setting: 'allow',
+      resourceId: appConfig.flash.resourceId,
+      primaryPattern: '[*.]adobe.com'
+    },
+    {
+      setting: 'allow',
+      resourceId: appConfig.flash.resourceId,
+      primaryPattern: '[*.]macromedia.com'
+    }
+  ]
+}
+
+const getDefault3rdPartyStorageSettings = (braveryDefaults, appSettings, appConfig) => {
+  braveryDefaults = makeImmutable(braveryDefaults)
+  if (braveryDefaults.get('cookieControl') === 'block3rdPartyCookie') {
     const contentSettings = [
       {
         setting: 'block',
@@ -79,141 +187,114 @@ const getBlock3rdPartyStorage = (braveryDefaults) => {
   }
 }
 
-const hostSettingsToContentSettings = (hostSettings, contentSettingsSource) => {
-  let contentSettings = contentSettingsSource
+const siteSettingsToContentSettings = (currentSiteSettings, defaultContentSettings, braveryDefaults, appConfig) => {
+  let contentSettings = makeImmutable(defaultContentSettings)
+  currentSiteSettings = makeImmutable(currentSiteSettings)
+  braveryDefaults = makeImmutable(braveryDefaults)
+
   // We do 2 passes for setting content settings. On the first pass we consider all shield types.
-  for (let hostPattern in hostSettings) {
-    let hostSetting = hostSettings[hostPattern]
-    if (['number', 'boolean'].includes(typeof hostSetting.noScript)) {
-      addContentSettings(contentSettings.javascript, hostPattern, '*',
-        hostSetting.noScript === true ? 'block' : 'allow')
+  currentSiteSettings.forEach((siteSetting, hostPattern) => {
+    let primaryPattern = parseSiteSettingsPattern(hostPattern)
+
+    if (['number', 'boolean'].includes(typeof siteSetting.get('noScript'))) {
+      contentSettings = addContentSettings(contentSettings, 'javascript', primaryPattern, '*', siteSetting.get('noScript') === true ? 'block' : 'allow')
     }
-    if (typeof hostSetting.runInsecureContent === 'boolean') {
-      addContentSettings(contentSettings.runInsecureContent, hostPattern, '*',
-        hostSetting.runInsecureContent ? 'allow' : 'block')
+    if (typeof siteSetting.get('runInsecureContent') === 'boolean') {
+      contentSettings = addContentSettings(contentSettings, 'runInsecureContent', primaryPattern, '*',
+        siteSetting.get('runInsecureContent') ? 'allow' : 'block')
     }
-    if (hostSetting.cookieControl) {
-      if (hostSetting.cookieControl === 'block3rdPartyCookie') {
-        addContentSettings(contentSettings.cookies, hostPattern, '*', 'block')
-        addContentSettings(contentSettings.cookies, hostPattern, parseSiteSettingsPattern(hostPattern), 'allow')
-        addContentSettings(contentSettings.referer, hostPattern, '*', 'block')
-        cookieExceptions.forEach((exceptionPair) =>
-          addContentSettings(contentSettings.cookies, exceptionPair[0], exceptionPair[1], 'allow'))
+    if (siteSetting.get('cookieControl')) {
+      if (siteSetting.get('cookieControl') === 'block3rdPartyCookie') {
+        contentSettings = addContentSettings(contentSettings, 'cookies', primaryPattern, '*', 'block')
+        contentSettings = addContentSettings(contentSettings, 'cookies', primaryPattern, primaryPattern, 'allow')
+        contentSettings = addContentSettings(contentSettings, 'referer', primaryPattern, '*', 'block')
+        cookieExceptions.forEach((exceptionPair) => {
+          contentSettings = addContentSettings(contentSettings, 'cookies', exceptionPair[0], exceptionPair[1], 'allow')
+        })
       } else {
-        addContentSettings(contentSettings.cookies, hostPattern, '*', 'allow')
-        addContentSettings(contentSettings.referer, hostPattern, '*', 'allow')
+        contentSettings = addContentSettings(contentSettings, 'cookies', primaryPattern, '*', 'allow')
+        contentSettings = addContentSettings(contentSettings, 'referer', primaryPattern, '*', 'allow')
       }
     }
-    if (typeof hostSetting.fingerprintingProtection === 'boolean') {
-      addContentSettings(contentSettings.canvasFingerprinting, hostPattern, '*', hostSetting.fingerprintingProtection ? 'block' : 'allow')
+    if (typeof siteSetting.get('fingerprintingProtection') === 'boolean') {
+      contentSettings = addContentSettings(contentSettings, 'canvasFingerprinting', primaryPattern, '*', siteSetting.get('fingerprintingProtection') ? 'block' : 'allow')
     }
-    if (hostSetting.adControl) {
-      addContentSettings(contentSettings.adInsertion, hostPattern, '*', hostSetting.adControl === 'showBraveAds' ? 'allow' : 'block')
+    if (siteSetting.get('adControl')) {
+      contentSettings = addContentSettings(contentSettings, 'adInsertion', primaryPattern, '*', siteSetting.get('adControl') === 'showBraveAds' ? 'allow' : 'block')
     }
-    if (typeof hostSetting.flash === 'number') {
-      addContentSettings(contentSettings.flashActive, hostPattern, '*', 'allow')
+    if (typeof siteSetting.get('flash') === 'number' && braveryDefaults.get('flash')) {
+      contentSettings = addContentSettings(contentSettings, 'plugins', primaryPattern, '*', 'allow', appConfig.flash.resourceId)
     }
-  }
+    if (typeof siteSetting.get('widevine') === 'number' && braveryDefaults.get('widevine')) {
+      contentSettings = addContentSettings(contentSettings, 'plugins', primaryPattern, '*', 'allow', appConfig.widevine.resourceId)
+    }
+  })
   // On the second pass we consider only shieldsUp === false settings since we want those to take precedence.
-  for (let hostPattern in hostSettings) {
-    let hostSetting = hostSettings[hostPattern]
-    if (hostSetting.shieldsUp === false) {
-      addContentSettings(contentSettings.cookies, hostPattern, '*', 'allow')
-      addContentSettings(contentSettings.canvasFingerprinting, hostPattern, '*', 'allow')
-      addContentSettings(contentSettings.adInsertion, hostPattern, '*', 'block')
-      addContentSettings(contentSettings.javascript, hostPattern, '*', 'allow')
-      addContentSettings(contentSettings.referer, hostPattern, '*', 'allow')
+  currentSiteSettings.forEach((siteSetting, hostPattern) => {
+    let primaryPattern = parseSiteSettingsPattern(hostPattern)
+
+    if (siteSetting.get('shieldsUp') === false) {
+      contentSettings = addContentSettings(contentSettings, 'cookies', primaryPattern, '*', 'allow')
+      contentSettings = addContentSettings(contentSettings, 'canvasFingerprinting', primaryPattern, '*', 'allow')
+      contentSettings = addContentSettings(contentSettings, 'adInsertion', primaryPattern, '*', 'block')
+      contentSettings = addContentSettings(contentSettings, 'javascript', primaryPattern, '*', 'allow')
+      contentSettings = addContentSettings(contentSettings, 'referer', primaryPattern, '*', 'allow')
     }
-  }
+  })
   return contentSettings
 }
 
-const getContentSettingsFromSiteSettings = (appState, isPrivate = false) => {
-  let braveryDefaults = siteSettings.braveryDefaults(appState, appConfig)
+const getSettingsFromSiteSettings = (defaultSettings, appState, appConfig, isPrivate = false) => {
+  let currentSiteSettings = appState.get('siteSettings')
+  const temporarySiteSettings = appState.get('temporarySiteSettings')
+  const braveryDefaults = siteSettings.braveryDefaults(appState, appConfig)
 
-  const contentSettings = {
-    cookies: getBlock3rdPartyStorage(braveryDefaults),
-    referer: [{
-      setting: braveryDefaults.cookieControl === 'block3rdPartyCookie' ? 'block' : 'allow',
-      primaryPattern: '*'
-    }],
-    adInsertion: [{
-      setting: braveryDefaults.adControl === 'showBraveAds' ? 'allow' : 'block',
-      primaryPattern: '*'
-    }],
-    passwordManager: [{
-      setting: getPasswordManagerEnabled(appState) ? 'allow' : 'block',
-      primaryPattern: '*'
-    }],
-    javascript: [{
-      setting: braveryDefaults.noScript ? 'block' : 'allow',
-      primaryPattern: '*'
-    }, {
-      setting: 'allow',
-      secondaryPattern: '*',
-      primaryPattern: 'file:///*'
-    }, {
-      setting: 'allow',
-      secondaryPattern: '*',
-      primaryPattern: 'chrome-extension://*'
-    }],
-    canvasFingerprinting: [{
-      setting: braveryDefaults.fingerprintingProtection ? 'block' : 'allow',
-      primaryPattern: '*'
-    }],
-    flashEnabled: [{
-      setting: braveryDefaults.flash ? 'allow' : 'block',
-      primaryPattern: '*'
-    }],
-    flashActive: [{
-      setting: 'block',
-      primaryPattern: '*'
-    }],
-    runInsecureContent: [{
-      setting: 'block',
-      primaryPattern: '*'
-    }]
-  }
-
-  const regularSettings = hostSettingsToContentSettings(appState.get('siteSettings').toJS(), contentSettings)
   if (isPrivate) {
-    const privateSettings =
-      hostSettingsToContentSettings(appState.get('siteSettings').merge(appState.get('temporarySiteSettings')).toJS(),
-        contentSettings)
-    return { content_settings: privateSettings }
+    currentSiteSettings = currentSiteSettings.merge(temporarySiteSettings)
   }
-  return { content_settings: regularSettings }
+
+  return siteSettingsToContentSettings(currentSiteSettings, defaultSettings, braveryDefaults, appConfig)
 }
+
+const updateUserPrefs = (appState, appConfig, isPrivate = false) => {
+  const braveryDefaults = siteSettings.braveryDefaults(appState, appConfig)
+  const defaultUserPrefs = getDefaultUserPrefContentSettings(braveryDefaults, appState, appConfig)
+
+  return { 'content_settings': getSettingsFromSiteSettings(defaultUserPrefs, appState, appConfig, isPrivate) }
+}
+
+const updateContentSettings = (appState, appConfig, isPrivate = false) => {
+  const braveryDefaults = siteSettings.braveryDefaults(appState, appConfig)
+  const defaultHostContentSettings = getDefaultHostContentSettings(braveryDefaults, appState, appConfig)
+
+  return getSettingsFromSiteSettings(defaultHostContentSettings, appState, appConfig, isPrivate)
+}
+
+let userPrefsUpdateTrigger
+let contentSettingsUpdateTrigger
 
 // Register callback to handle all updates
 const doAction = (action) => {
   switch (action.actionType) {
-    case AppConstants.APP_CHANGE_SITE_SETTING:
+    case appConstants.APP_REMOVE_SITE_SETTING:
+    case appConstants.APP_CHANGE_SITE_SETTING:
       AppDispatcher.waitFor([AppStore.dispatchToken], () => {
-        if (action.temporary) {
-          setUserPref('content_settings', getContentSettingsFromSiteSettings(AppStore.getState(), true).content_settings, true)
-        } else {
-          setUserPref('content_settings', getContentSettingsFromSiteSettings(AppStore.getState()).content_settings)
-        }
+        userPrefsUpdateTrigger(action.temporary)
+        contentSettingsUpdateTrigger(action.temporary)
       })
       break
-    case AppConstants.APP_REMOVE_SITE_SETTING:
+    case appConstants.APP_CHANGE_SETTING:
+    case appConstants.APP_SET_RESOURCE_ENABLED:
       AppDispatcher.waitFor([AppStore.dispatchToken], () => {
-        if (action.temporary) {
-          setUserPref('content_settings', getContentSettingsFromSiteSettings(AppStore.getState(), true).content_settings, true)
-        } else {
-          setUserPref('content_settings', getContentSettingsFromSiteSettings(AppStore.getState()).content_settings)
-        }
+        userPrefsUpdateTrigger()
+        contentSettingsUpdateTrigger()
       })
       break
-    case AppConstants.APP_SET_RESOURCE_ENABLED:
+    case appConstants.APP_ALLOW_FLASH_ONCE:
+    case appConstants.APP_ALLOW_FLASH_ALWAYS:
       AppDispatcher.waitFor([AppStore.dispatchToken], () => {
-        setUserPref('content_settings', getContentSettingsFromSiteSettings(AppStore.getState()).content_settings)
-      })
-      break
-    case AppConstants.APP_CHANGE_SETTING:
-      AppDispatcher.waitFor([AppStore.dispatchToken], () => {
-        setUserPref('content_settings', getContentSettingsFromSiteSettings(AppStore.getState()).content_settings)
+        userPrefsUpdateTrigger(action.isPrivate)
+        contentSettingsUpdateTrigger(action.isPrivate)
       })
       break
     default:
@@ -221,5 +302,13 @@ const doAction = (action) => {
 }
 
 module.exports.init = () => {
+  userPrefsUpdateTrigger = registerUserPrefs((incognito = false) =>
+    updateUserPrefs(AppStore.getState(), appConfig, incognito)
+  )
+
+  contentSettingsUpdateTrigger = registerContentSettings((incognito = false) =>
+    updateContentSettings(AppStore.getState(), appConfig, incognito)
+  )
+
   AppDispatcher.register(doAction)
 }

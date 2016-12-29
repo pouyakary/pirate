@@ -10,6 +10,7 @@ const defaultScheme = 'http://'
 const fileScheme = 'file://'
 const os = require('os')
 const urlParse = require('url').parse
+const urlFormat = require('url').format
 const pdfjsExtensionId = require('../constants/config').PDFJSExtensionId
 
 /**
@@ -98,29 +99,32 @@ const UrlUtil = {
     if (input === undefined || input === null) {
       return true
     }
-
+    if (typeof input !== 'string') {
+      return true
+    }
     // for cases where we have scheme and we dont want spaces in domain names
     const caseDomain = /^[\w]{2,5}:\/\/[^\s\/]+\//
     // for cases, quoted strings
     const case1Reg = /^".*"$/
-    // for cases, ?abc, "a? b", ".abc" and "abc." which should searching query
-    const case2Reg = /^(\?)|(\?.+\s)|^(\.)|(\.)$/
+    // for cases:
+    // - starts with "?" or "."
+    // - contains "? "
+    // - ends with "." (and was not preceded by a domain or /)
+    const case2Reg = /(^\?)|(\?.+\s)|(^\.)|(^[^.+\..+]*[^\/]*\.$)/
     // for cases, pure string
     const case3Reg = /[\?\.\/\s:]/
     // for cases, data:uri, view-source:uri and about
-    const case4Reg = /^data|view-source|mailto|about|chrome-extension:.*/
+    const case4Reg = /^(data|view-source|mailto|about|chrome-extension|magnet):.*/
 
     let str = input.trim()
-    let scheme = this.getScheme(str)
+    const scheme = this.getScheme(str)
 
     if (str.toLowerCase() === 'localhost') {
       return false
     }
-
     if (case1Reg.test(str)) {
       return true
     }
-
     if (case2Reg.test(str) || !case3Reg.test(str) ||
         (scheme === undefined && /\s/g.test(str))) {
       return true
@@ -128,11 +132,9 @@ const UrlUtil = {
     if (case4Reg.test(str)) {
       return !this.canParseURL(str)
     }
-
     if (scheme && (scheme !== 'file://')) {
       return !caseDomain.test(str + '/')
     }
-
     str = this.prependScheme(str)
     return !this.canParseURL(str)
   },
@@ -155,7 +157,11 @@ const UrlUtil = {
       return input
     }
 
-    return new window.URL(input).href
+    try {
+      return new window.URL(input).href
+    } catch (e) {
+      return input
+    }
   },
 
   /**
@@ -285,34 +291,6 @@ const UrlUtil = {
   },
 
   /**
-   * Checks whether a link is an Flash installer URL.
-   * @param {string} url
-   * @return {boolean}
-   */
-  isFlashInstallUrl: function (url) {
-    const adobeRegex = new RegExp('//(get\\.adobe\\.com/([a-z_-]+/)*flashplayer|www\\.macromedia\\.com/go/getflash|www\\.adobe\\.com/go/getflash)', 'i')
-    return adobeRegex.test(url)
-  },
-
-  /**
-   * Checks whether the first-party page is one that should have Flash install
-   * URL interception.
-   * @param {string} url
-   * @return {boolean}
-   */
-  shouldInterceptFlash: function (url) {
-    if (!url) {
-      return false
-    }
-    const parsed = urlParse(url)
-    const exemptHostPattern = new RegExp('(\\.adobe\\.com|www\\.google(\\.\\w+){1,2}|^duckduckgo\\.com|^search\\.yahoo\\.com)$')
-    return parsed.hostname &&
-      ['http:', 'https:'].includes(parsed.protocol) &&
-      !exemptHostPattern.test(parsed.hostname) &&
-      !['/search', '/search/'].includes(parsed.pathname)
-  },
-
-  /**
    * Gets PDF location from a potential PDFJS URL
    * @param {string} url
    * @return {string}
@@ -320,6 +298,25 @@ const UrlUtil = {
   getLocationIfPDF: function (url) {
     if (url && url.startsWith(`chrome-extension://${pdfjsExtensionId}/`)) {
       return url.replace(/^chrome-extension:\/\/.+\/(\w+:\/\/.+)/, '$1')
+    }
+    return url
+  },
+
+  /**
+   * Gets location to display in the urlbar
+   * @param {string} url
+   * @param {boolean} pdfjsEnabled
+   * @return {string}
+   */
+  getDisplayLocation: function (url, pdfjsEnabled) {
+    if (!url || url === 'about:newtab') {
+      return ''
+    }
+    url = pdfjsEnabled ? this.getLocationIfPDF(url) : url
+    const parsed = urlParse(url)
+    if (parsed && parsed.auth) {
+      parsed.auth = null
+      return urlFormat(parsed)
     } else {
       return url
     }
