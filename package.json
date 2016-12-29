@@ -1,7 +1,7 @@
 {
-  "name": "brave",
+  "name": "braver",
   "version": "0.12.4",
-  "description": "Brave laptop and desktop browser",
+  "description": "Braver: A broweser better than Brave!",
   "main": "./app/index.js",
   "config": {
     "port": "8080"
@@ -67,6 +67,10 @@
     {
       "name": "Brian Clifton",
       "email": "clifton@brave.com"
+    },
+    {
+      "name": "Pouya Kary",
+      "email": "k@karyfoundation.org"
     }
   ],
   "license": "MPL-2.0",
