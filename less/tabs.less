@@ -158,6 +158,7 @@
   &:not(.active):hover {
     //background: linear-gradient(to bottom, white, @chromePrimary);
     background: #f4f4f4;
+    border-right-color: transparent;
     &.private {
       background: lighten(@privateTabBackground, 20%);
     }
@@ -274,7 +275,8 @@
 
 .tabPages {
   background: @tabsBackground;
-  display: flex;
+  // for now... 
+  display: none ;
   height: @tabPagesHeight;
   justify-content: center;
   position: relative;
@@ -287,13 +289,13 @@
     }
   }
 
-  &.singlePage {
-    height: 0;
-  }
-
   >div {
     display: flex
   }
+}
+
+.singlePage {
+  height: 0;
 }
 
 .tabPage {
