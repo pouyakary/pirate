@@ -9,6 +9,7 @@ let ready = false
 
 // Setup the crash handling
 const CrashHerald = require('./crash-herald')
+CrashHerald.init()
 
 const handleUncaughtError = (error) => {
   var message, ref, stack
@@ -36,14 +37,14 @@ process.on('unhandledRejection', function (error, promise) {
   handleUncaughtError(error)
 })
 
-process.on('warning', warning => console.warn(warning.stack))
-
 if (process.platform === 'win32') {
   require('./windowsInit')
 }
 
 const electron = require('electron')
 const app = electron.app
+// set userData before loading anything else
+require('./browser/lib/patchUserDataDir')
 const BrowserWindow = electron.BrowserWindow
 const dialog = electron.dialog
 const ipcMain = electron.ipcMain
@@ -54,11 +55,12 @@ const Importer = require('./importer')
 const messages = require('../js/constants/messages')
 const appConfig = require('../js/constants/appConfig')
 const appActions = require('../js/actions/appActions')
+const downloadActions = require('../js/actions/downloadActions')
 const SessionStore = require('./sessionStore')
 const AppStore = require('../js/stores/appStore')
 const PackageLoader = require('./package-loader')
-const Autofill = require('./autofill')
 const Extensions = require('./extensions')
+const Filtering = require('./filtering')
 const TrackingProtection = require('./trackingProtection')
 const AdBlock = require('./adBlock')
 const AdInsertion = require('./browser/ads/adInsertion')
@@ -66,6 +68,7 @@ const HttpsEverywhere = require('./httpsEverywhere')
 const SiteHacks = require('./siteHacks')
 const CmdLine = require('./cmdLine')
 const UpdateStatus = require('../js/constants/updateStatus')
+const showAbout = require('./aboutDialog').showAbout
 const urlParse = require('url').parse
 const CryptoUtil = require('../js/lib/cryptoUtil')
 const keytar = require('keytar')
@@ -73,14 +76,14 @@ const siteSettings = require('../js/state/siteSettings')
 const spellCheck = require('./spellCheck')
 const locale = require('./locale')
 const ledger = require('./ledger')
+const flash = require('../js/flash')
 const contentSettings = require('../js/state/contentSettings')
 const privacy = require('../js/state/privacy')
+const basicAuth = require('./browser/basicAuth')
 const async = require('async')
-const settings = require('../js/constants/settings')
 
 // temporary fix for #4517, #4518 and #4472
 app.commandLine.appendSwitch('enable-use-zoom-for-dsf', 'false')
-app.commandLine.appendSwitch('enable-features', 'BlockSmallPluginContent,PreferHtmlOverPlugins')
 
 // Used to collect the per window state when shutting down the application
 let perWindowState = []
@@ -102,8 +105,6 @@ const prefsRestartCallbacks = {}
 const prefsRestartLastValue = {}
 
 const unsafeTestMasterKey = 'c66af15fc6555ebecf7cee3a5b82c108fd3cb4b587ab0b299d28e39c79ecc708'
-
-const defaultProtocols = ['http', 'https']
 
 const sessionStoreQueue = async.queue((task, callback) => {
   task(callback)
@@ -239,20 +240,23 @@ const initiateSessionStateSave = (beforeQuit) => {
 
 let loadAppStatePromise = SessionStore.loadAppState()
 
+let flashInitialized = false
+
 // Some settings must be set right away on startup, those settings should be handled here.
 loadAppStatePromise.then((initialState) => {
-  const {HARDWARE_ACCELERATION_ENABLED, SMOOTH_SCROLL_ENABLED, SEND_CRASH_REPORTS} = require('../js/constants/settings')
+  const {HARDWARE_ACCELERATION_ENABLED, SMOOTH_SCROLL_ENABLED} = require('../js/constants/settings')
   if (initialState.settings[HARDWARE_ACCELERATION_ENABLED] === false) {
     app.disableHardwareAcceleration()
   }
-  if (initialState.settings[SEND_CRASH_REPORTS] !== false) {
-    console.log('Crash reporting enabled')
-    CrashHerald.init()
-  } else {
-    console.log('Crash reporting disabled')
-  }
   if (initialState.settings[SMOOTH_SCROLL_ENABLED] === false) {
     app.commandLine.appendSwitch('disable-smooth-scrolling')
+  }
+  if (initialState.flash && initialState.flash.enabled === true) {
+    if (flash.init()) {
+      // Flash was initialized successfully
+      flashInitialized = true
+      return
+    }
   }
 })
 
@@ -283,13 +287,13 @@ app.on('ready', () => {
     let host = urlParse(url).host
     if (host && acceptCertDomains[host] === true) {
       // Ignore the cert error
-      cb('continue')
+      e.preventDefault()
+      cb(true)
       return
-    } else {
-      cb('deny')
     }
 
     if (resourceType !== 'mainFrame') {
+      // Block subresources with certificate errors
       return
     }
 
@@ -306,7 +310,6 @@ app.on('ready', () => {
   })
 
   app.on('before-quit', (e) => {
-    appActions.shuttingDown()
     shuttingDown = true
     if (sessionStateStoreCompleteOnQuit) {
       return
@@ -350,51 +353,45 @@ app.on('ready', () => {
     }
   })
 
-  process.on('window-alert',
-    (webContents, extraData, title, message, defaultPromptText,
-        shouldDisplaySuppressCheckbox, isBeforeUnloadDialog, isReload, cb) => {
-      let suppress = false
-      const buttons = ['OK']
-      if (!webContents || webContents.isDestroyed()) {
-        cb(false, '', suppress)
-      } else {
-        cb(true, '', suppress)
-      }
-
-      const hostWebContents = webContents.hostWebContents || webContents
-      dialog.showMessageBox(BrowserWindow.fromWebContents(hostWebContents), {
-        message,
-        title,
-        buttons: buttons
-      })
+  ipcMain.removeAllListeners('window-alert')
+  ipcMain.on('window-alert', function (event, message, title) {
+    var buttons
+    if (title == null) {
+      title = ''
+    }
+    buttons = ['OK']
+    message = message.toString()
+    dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+      message: message,
+      title: title,
+      buttons: buttons
     })
+    // Alert should always return undefined.
+  })
 
-  process.on('window-confirm',
-    (webContents, extraData, title, message, defaultPromptText,
-        shouldDisplaySuppressCheckbox, isBeforeUnloadDialog, isReload, cb) => {
-      let suppress = false
-      const buttons = ['OK', 'Cancel']
-      if (!webContents || webContents.isDestroyed()) {
-        cb(false, '', suppress)
-      }
-
-      const hostWebContents = webContents.hostWebContents || webContents
-      const response = dialog.showMessageBox(BrowserWindow.fromWebContents(hostWebContents), {
-        message,
-        title,
-        buttons: buttons,
-        cancelId: 1
-      })
-      cb(!response, '', suppress)
+  ipcMain.removeAllListeners('window-confirm')
+  ipcMain.on('window-confirm', function (event, message, title) {
+    var buttons, cancelId
+    if (title == null) {
+      title = ''
+    }
+    buttons = ['OK', 'Cancel']
+    cancelId = 1
+    event.returnValue = !dialog.showMessageBox(BrowserWindow.getFocusedWindow(), {
+      message: message,
+      title: title,
+      buttons: buttons,
+      cancelId: cancelId
     })
+    return event.returnValue
+  })
 
-  process.on('window-prompt',
-    (webContents, extraData, title, message, defaultPromptText,
-        shouldDisplaySuppressCheckbox, isBeforeUnloadDialog, isReload, cb) => {
-      console.warn('window.prompt is not supported yet')
-      let suppress = false
-      cb(false, '', suppress)
-    })
+  ipcMain.removeAllListeners('window-prompt')
+  ipcMain.on('window-prompt', function (event, text, defaultText) {
+    console.warn('window.prompt is not supported yet')
+    event.returnValue = null
+    return event.returnValue
+  })
 
   process.on(messages.UNDO_CLOSED_WINDOW, () => {
     if (lastWindowState) {
@@ -408,14 +405,16 @@ app.on('ready', () => {
     // For tests we always want to load default app state
     const loadedPerWindowState = initialState.perWindowState
     delete initialState.perWindowState
+    initialState.flashInitialized = flashInitialized
     appActions.setState(Immutable.fromJS(initialState))
     Menu.init(initialState, null)
     return loadedPerWindowState
   }).then((loadedPerWindowState) => {
+    basicAuth.init()
     contentSettings.init()
     privacy.init()
-    Autofill.init()
     Extensions.init()
+    Filtering.init()
     SiteHacks.init()
     spellCheck.init()
     HttpsEverywhere.init()
@@ -424,7 +423,7 @@ app.on('ready', () => {
     AdInsertion.init()
 
     if (!loadedPerWindowState || loadedPerWindowState.length === 0) {
-      if (!CmdLine.newWindowURL()) {
+      if (!CmdLine.newWindowURL) {
         appActions.newWindow()
       }
     } else {
@@ -434,22 +433,9 @@ app.on('ready', () => {
     }
     process.emit(messages.APP_INITIALIZED)
 
-    if (process.env.BRAVE_IS_DEFAULT_BROWSER !== undefined) {
-      if (process.env.BRAVE_IS_DEFAULT_BROWSER === 'true') {
-        appActions.changeSetting(settings.IS_DEFAULT_BROWSER, true)
-      } else if (process.env.BRAVE_IS_DEFAULT_BROWSER === 'false') {
-        appActions.changeSetting(settings.IS_DEFAULT_BROWSER, false)
-      }
-    } else {
-      // Default browser checking
-      let isDefaultBrowser = ['development', 'test'].includes(process.env.NODE_ENV)
-        ? true : defaultProtocols.every(p => app.isDefaultProtocolClient(p))
-      appActions.changeSetting(settings.IS_DEFAULT_BROWSER, isDefaultBrowser)
-    }
-
-    if (CmdLine.newWindowURL()) {
+    if (CmdLine.newWindowURL) {
       appActions.newWindow(Immutable.fromJS({
-        location: CmdLine.newWindowURL()
+        location: CmdLine.newWindowURL
       }))
     }
 
@@ -476,9 +462,7 @@ app.on('ready', () => {
         prefsRestartCallbacks[message] = (buttonIndex, persist) => {
           delete prefsRestartCallbacks[message]
           if (buttonIndex === 0) {
-            const args = process.argv.slice(1)
-            args.push('--relaunch')
-            app.relaunch({args})
+            app.relaunch({args: process.argv.slice(1) + ['--relaunch']})
             app.quit()
           } else {
             delete prefsRestartLastValue[config]
@@ -493,6 +477,16 @@ app.on('ready', () => {
 
     ipcMain.on(messages.SET_CLIPBOARD, (e, text) => {
       electron.clipboard.writeText(text)
+    })
+
+    ipcMain.on(messages.CHECK_FLASH_INSTALLED, (e) => {
+      flash.checkFlashInstalled((installed) => {
+        e.sender.send(messages.FLASH_UPDATED, installed)
+      })
+    })
+
+    ipcMain.on(messages.OPEN_DOWNLOAD_PATH, (e, download) => {
+      downloadActions.openDownloadPath(Immutable.fromJS(download))
     })
 
     ipcMain.on(messages.CERT_ERROR_ACCEPTED, (event, url) => {
@@ -736,6 +730,9 @@ app.on('ready', () => {
       // This is fired by a menu entry (for now - will be scheduled)
       process.on(messages.CHECK_FOR_UPDATE, () => Updater.checkForUpdate(true))
       ipcMain.on(messages.CHECK_FOR_UPDATE, () => Updater.checkForUpdate(true))
+
+      process.on(messages.SHOW_ABOUT, showAbout)
+      ipcMain.on(messages.SHOW_ABOUT, showAbout)
 
       // This is fired from a auto-update metadata call
       process.on(messages.UPDATE_META_DATA_RETRIEVED, (metadata) => {

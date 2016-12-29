@@ -10,31 +10,6 @@ AppStore
 ```javascript
 {
   firstRunTimestamp: integer,
-  tabs: [{
-    // persistent properties
-    url: string,
-    index: number,  // the position of the tab in the window
-    windowUUID: string,  // the permanent identifier for the window
-    active: boolean,  // whether the tab is selected
-    title: string,
-    favIconUrl: string,
-    // session properties
-    windowId: number,  // the windowId that contains the tab
-    audible: boolean,  // is audio playing (muted or not)
-    muted: boolean,  // is the tab muted
-  }],
-  windows: [{
-    // persistent properties
-    focused: boolean,
-    top: number,
-    left: number,
-    width: number,
-    height: number,
-    type: string,  // "normal", "popup", or "devtools"
-    state: string  // "normal", "minimized", "maximized", or "fullscreen"
-    // session properties
-    id: number,  // the electron id for the window
-  }],
   extensions: {
     [id]: { // the unique id of the extension
       id: string,
@@ -51,11 +26,6 @@ AppStore
         [tabId]: {
           browserAction: {} // tab specific browser action properties
         }
-      },
-      contextMenus: {
-        extensionId: string,
-        menuItemId: string,
-        properties: object
       }
     }
   },
@@ -67,7 +37,6 @@ AppStore
     favicon: string, // URL of the favicon
     themeColor: string, // css compatible color string
     lastAccessedTime: number, // datetime.getTime()
-    creationTime: number, //creation time of bookmark
     partitionNumber: number, // Optionally specifies a specific session
     folderId: number, // Set for bookmark folders only
     parentFolderId: number // Set for bookmarks and bookmark folders only
@@ -103,7 +72,6 @@ AppStore
       httpsEverywhere: boolean,
       fingerprintingProtection: boolean,
       flash: (number|boolean), // approval expiration time if allowed, false if never allow
-      widevine: (number|boolean), // false = block widevine, 0 = allow once, 1 = allow always
       ledgerPayments: boolean, // False if site should not be paid by the ledger. Defaults to true.
       ledgerPaymentsShown: boolean, // False if site should not be paid by the ledger and should not be shown in the UI. Defaults to true.
       runInsecureContent: boolean // Allow active mixed content
@@ -148,18 +116,8 @@ AppStore
   flash: {
     enabled: boolean // Enable flash
   },
-  widevine: {
-    enabled: boolean, // true if widevine is installed and enabled
-    ready: boolean // true if widevine is in a ready state
-  },
-  defaultWindowHeight: number, // DEPRECATED (0.12.7); replaced w/ defaultWindowParams.height
-  defaultWindowWidth: number, // DEPRECATED (0.12.7); replaced w/ defaultWindowParams.width
-  defaultWindowParams: {
-    height: number,
-    width: number,
-    x: number,
-    y: number
-  },
+  defaultWindowHeight: number,
+  defaultWindowWidth: number,
   updates: {
     status: string, // UpdateStatus from js/constants/updateStatus.js
     metadata: {
@@ -183,18 +141,15 @@ AppStore
       style: string // css class for notification bar. See notificationBar.less
     }
   }], // the notifications for the frame. not preserved across restart.
-  settings: {
+  settings: [{
     // See defaults in js/constants/appConfig.js
     'general.startup-mode': string, // One of: lastTime, homePage, newTabPage
     'general.homepage': string, // URL of the user's homepage
-    'general.newtab-mode': string,  // One of: newTabPage, homePage, defaultSearchEngine
     'general.show-home-button': boolean, // true if the home button should be shown
     'general.useragent.value': (undefined|string), // custom user agent value
     'general.downloads.default-save-path': string, // default path for saving files
     'general.autohide-menu': boolean, // true if the Windows menu should be autohidden
     'general.disable-title-mode': boolean, // true if title mode should always be disabled
-    'general.check-default-on-startup': boolean, // true to check whether brave is default browser on startup
-    'general.is-default-browser': boolean, // true if brave is default browser
     'search.default-search-engine': string, // name of search engine, from js/data/searchProviders.js
     'search.offer-search-suggestions': boolean, // true if suggestions should be offered from the default search engine when available.
     'tabs.switch-to-new-tabs': boolean, // true if newly opened tabs should be focused immediately
@@ -220,16 +175,13 @@ AppStore
     'advanced.hardware-acceleration-enabled': boolean, // false if hardware acceleration should be explicitly disabled
     'advanced.default-zoom-level': number, // the default zoom level for sites that have no specific setting
     'advanced.pdfjs-enabled': boolean, // Whether or not to render PDF documents in the browser
-    'advanced.torrent-viewer-enabled': boolean, // Whether to render magnet links in the browser
     'advanced.smooth-scroll-enabled': boolean, // false if smooth scrolling should be explicitly disabled
-    'advanced.send-crash-reports': boolean, // true or undefined if crash reports should be sent
     'shutdown.clear-history': boolean, // true to clear history on shutdown
     'shutdown.clear-downloads': boolean, // true to clear downloads on shutdown
     'shutdown.clear-cache': boolean, // true to clear cache on shutdown
     'shutdown.clear-all-site-cookies': boolean, // true to clear all site cookies on shutdown
     'adblock.customRules': string, // custom rules in ABP filter syntax
-    'extensions.pocket.enabled': boolean, // true if pocket is enabled
-  },
+  }],
   dictionary: {
     locale: string, // en_US, en, or any other locale string
     ignoredWords: Array<string>, // List of words to ignore
@@ -246,27 +198,13 @@ AppStore
     }
   },
   about: {
-    brave: {
-      versionInformation: [{
-        name: string,
-        version: string
-      }] // used on about:brave. not persisted (removed on save)
-    },
-    history: {
-      entries: [object] // used on about:history. not persisted (removed on save)
-    },
     newtab: {
-      gridLayoutSize: string, // 'small', 'medium', 'large'
-      sites: [string], // List of sites to be used on gridLayout. Defaults to 6 Brave-related sites; see data/newTabData.js => topSites
-      ignoredTopSites: [string], // List of ignored sites
-      pinnedTopSites: [string], // List of pinned sites to be used on gridLayout. Defaults to 1 Brave-related site; see data/newTabData.js => pinnedTopSites
-      updatedStamp: number // timestamp for when the data was last updated
+      gridLayout: string // 'small', 'medium', 'large'
     }
   },
   menu: {
     template: object // used on Windows and by our tests: template object with Menubar control
-  },
-  defaultBrowserCheckComplete: boolean // true to indicate default browser check is complete
+  }
 }
 ```
 
@@ -358,7 +296,6 @@ WindowStore
       internalFindStatePresent: boolean // true if a find-first (ie findNext: false) call has been made
     }
     unloaded: boolean, // true if the tab is unloaded
-    openerTabId: number, // web contents tabId that opened this tab
 
     navbar: {
       focused: boolean, // whether the navbar is focused
@@ -375,7 +312,6 @@ WindowStore
             type: string // The type of suggestion (one of js/constants/suggestionTypes.js)
           },
           urlSuffix: string, // autocomplete suffix
-          shouldRender: boolean, // if the suggestions should render
           autocompleteEnabled: boolean // used to enable or disable autocomplete
         },
         focused: boolean, // whether the urlbar is focused
@@ -422,11 +358,7 @@ WindowStore
       isVisible: boolean, // true if Menubar control is visible
       selectedIndex: Array<number>, // indices of the selected menu item(s) (or null for none selected)
       lastFocusedSelector: string // selector for the last selected element (browser ui, not frame content)
-    },
-    bookmarksToolbar: {
-      selectedFolderId: number // folderId from the siteDetail of the currently expanded folder
-    },
-    hasFocus: boolean // true if window has focus
+    }
   },
   searchDetail: {
     searchURL: string, // with replacement var in string: {searchTerms}
@@ -435,7 +367,6 @@ WindowStore
   bookmarkDetail: {
     currentDetail: Object, // Detail of the current bookmark which is in add/edit mode
     originalDetails: Object // Detail of the original bookmark to edit
-    shouldShowLocation: Boolean // Whether or not to show the URL input
   },
   braveryPanelDetail: {
     advancedControls: boolean, // If specified, indicates if advanced controls should be shown
@@ -478,12 +409,12 @@ WindowStore
     maxHeight: number, // the maximum height of the popup window
     src: string, // the src for the popup window webview
   },
+  flashInitialized: boolean, // Whether flash was initialized successfully. Cleared on shutdown.
   cleanedOnShutdown: boolean, // whether app data was successfully cleared on shutdown
   lastAppVersion: string, // Version of the last file that was saved
   ledgerInfo: {
     creating: boolean,          // wallet is being created
     created: boolean,           // wallet is created
-    reconcileFrequency: number, // duration between each reconciliation in days
     reconcileStamp: number,     // timestamp for the next reconcilation
     transactions: [ {           // contributions reconciling/reconciled
       viewingId: string,        // UUIDv4 for this contribution
@@ -526,15 +457,14 @@ WindowStore
       exchangeName: string,      // the name of the BTC exchange
       exchangeURL: string        // the URL of the BTC exchange
     },
-    recoverySucceeded: boolean   // the status of an attempted recovery
     paymentIMG: string,          // the QR code equivalent of `paymentURL` expressed as "data:image/...;base64,..."
     error: {                     // non-null if the last updateLedgerInfo happened concurrently with an error
       caller: string             // function in which error was handled
       error: object              // error object returned
     }
   },
-  publisherInfo: {
-    synopsis: [ { // one entry for each publisher having a non-zero `score`
+  publisherInfo: [               // one entry for each publisher having a non-zero `score`
+    {
       rank: number,              // i.e., 1, 2, 3, ...
       verified: boolean,         // there is a verified wallet for this publisher
       site: string,              // publisher name, e.g., "wikipedia.org"
@@ -548,12 +478,8 @@ WindowStore
       percentage: number,        // i.e., 0, 1, ... 100
       publisherURL: string,      // publisher site, e.g., "https://wikipedia.org/"
       faviconURL: string         // i.e., "data:image/...;base64,..."
-    } ],
-    synopsisOptions: {
-      minDuration: number,       // e.g., 8000 for 8 seconds
-      minPublisherVisits: number // e.g., 0
     }
-  }
+  ],
   autofillAddressDetail: {
     name: string,
     organization: string,
@@ -590,17 +516,6 @@ WindowStore
     favorites: boolean,
     mergeFavorites: boolean,
     cookies: boolean
-  },
-  widevinePanelDetail: {
-    shown: boolean, // True if the panel is shown
-    location: string, // Location this dialog is for
-    alsoAddRememberSiteSetting: boolean, // True if an allow always rule should be added for the acitve frame as well if installed
-  },
-  modalDialogDetail: {
-    [className]: {
-      Object // props
-    },
-    ...
   }
 }
 ```

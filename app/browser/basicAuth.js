@@ -1,7 +1,9 @@
-const { app } = require('electron')
+const electron = require('electron')
+const app = electron.app
 const appActions = require('../../js/actions/appActions')
-const basicAuthState = require('../common/state/basicAuthState')
-const { makeImmutable } = require('../common/state/immutableUtil')
+const appConstants = require('../../js/constants/appConstants')
+const appDispatcher = require('../../js/dispatcher/appDispatcher')
+const appStore = require('../../js/stores/appStore')
 
 // URLs to callback for auth.
 let authCallbacks = {}
@@ -10,8 +12,34 @@ const cleanupAuthCallback = (tabId) => {
   delete authCallbacks[tabId]
 }
 
+const runAuthCallback = (tabId, detail) => {
+  let cb = authCallbacks[tabId]
+  if (cb) {
+    delete authCallbacks[tabId]
+    if (detail) {
+      let username = detail.get('username')
+      let password = detail.get('password')
+      cb(username, password)
+    } else {
+      cb()
+    }
+  }
+}
+
+const doAction = (action) => {
+  switch (action.actionType) {
+    case appConstants.APP_SET_LOGIN_RESPONSE_DETAIL:
+      appDispatcher.waitFor([appStore.dispatchToken], () => {
+        runAuthCallback(action.tabId, action.detail)
+      })
+      break
+    default:
+  }
+}
+
 const basicAuth = {
-  init: (state, action) => {
+  init: () => {
+    appDispatcher.register(doAction)
     app.on('login', (e, webContents, request, authInfo, cb) => {
       e.preventDefault()
       let tabId = webContents.getId()
@@ -22,35 +50,11 @@ const basicAuth = {
       webContents.on('crashed', () => {
         cleanupAuthCallback(tabId)
       })
-      setImmediate(() => {
-        appActions.setLoginRequiredDetail(tabId, {
-          request,
-          authInfo
-        })
+      appActions.setLoginRequiredDetail(tabId, {
+        request,
+        authInfo
       })
     })
-
-    return state
-  },
-
-  setLoginResponseDetail: (state, action) => {
-    state = makeImmutable(state)
-    action = makeImmutable(action)
-    let tabId = action.get('tabId')
-    let detail = action.get('detail')
-    state = basicAuthState.setLoginResponseDetail(state, action)
-    let cb = authCallbacks[tabId]
-    if (cb) {
-      cleanupAuthCallback(tabId)
-      if (detail) {
-        let username = detail.get('username')
-        let password = detail.get('password')
-        cb(username, password)
-      } else {
-        cb()
-      }
-    }
-    return state
   }
 }
 

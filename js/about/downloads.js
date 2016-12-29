@@ -10,7 +10,7 @@ const messages = require('../constants/messages')
 const aboutActions = require('./aboutActions')
 const downloadUtil = require('../state/downloadUtil')
 
-const ipc = window.chrome.ipcRenderer
+const ipc = window.chrome.ipc
 
 // Stylesheets
 require('../../less/about/itemList.less')
@@ -29,7 +29,7 @@ class DownloadItem extends ImmutableComponent {
       className='listItem'
       onContextMenu={aboutActions.contextMenu.bind(this, contextMenuDownload, 'download')}
       data-context-menu-disable
-      onDoubleClick={aboutActions.downloadRevealed.bind(this, this.props.downloadId)}>
+      onDoubleClick={aboutActions.openDownloadPath.bind(this, this.props.download)}>
       {
         <div className='aboutListItem' title={this.props.download.get('url')}>
           <div className='aboutItemTitle'>{this.props.download.get('filename')}</div>
@@ -63,7 +63,6 @@ class AboutDownloads extends React.Component {
     ipc.on(messages.DOWNLOADS_UPDATED, (e, detail) => {
       this.setState({
         downloads: Immutable.fromJS(detail && detail.downloads || {})
-          .sort((x, y) => y.get('startTime') - x.get('startTime'))
       })
     })
   }

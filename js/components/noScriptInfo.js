@@ -64,7 +64,7 @@ class NoScriptInfo extends ImmutableComponent {
       site: this.props.frameProps.get('location') || 'this page'
     }
     return <Dialog onHide={this.props.onHide} className='noScriptInfo' isClickDismiss>
-      <div className='dialogInner'>
+      <div>
         <div className='truncate' data-l10n-args={JSON.stringify(l10nArgs)}
           data-l10n-id={this.numberBlocked === 1 ? 'scriptBlocked' : 'scriptsBlocked'} />
         {this.buttons}

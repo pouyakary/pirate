@@ -19,10 +19,3 @@ module.exports.getBase64FromImageUrl = (url) => {
     img.src = url
   })
 }
-
-module.exports.getWorkingImageUrl = (url, cb) => {
-  const img = new window.Image()
-  img.onload = () => cb(true)
-  img.onerror = () => cb(false)
-  img.src = url
-}

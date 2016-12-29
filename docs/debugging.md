@@ -82,11 +82,11 @@ See [tests.md](https://github.com/brave/browser-laptop/blob/master/docs/tests.md
 
 ### Logging
 
-Enable Chromium and electron logging using:
+Enable Chrome logging (same as `—enable-logging`, but set at the right time)
 
-`npm run start-log`
-
-This will pass `--enable-logging=stderr` and set the log level to `--v=1` to `start.js`.
+```
+export ELECTRON_ENABLE_LOGGING=stderr
+```
 
 https://www.chromium.org/for-testers/enable-logging
 [docs/api/chrome-command-line-switches.md](https://github.com/brave/electron/blob/master/docs/api/chrome-command-line-switches.md) from electron docs.
@@ -111,7 +111,6 @@ index 78a80c6..dfa9f03 100755
 
 -  env['GYP_GENERATORS'] = 'ninja'
 +  env['GYP_GENERATORS'] = 'ninja,xcode-ninja'
-+  # For Visual Studio on Windows, use msvs-ninja instead
 
    if sys.platform in ['win32', 'cygwin']:
      # Do not let Chromium download their own toolchains.

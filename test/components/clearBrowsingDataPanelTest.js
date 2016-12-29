@@ -8,6 +8,7 @@ const messages = require('../../js/constants/messages')
 describe('Clear Browsing Panel', function () {
   function * setup (client) {
     yield client
+      .waitUntilWindowLoaded()
       .waitForUrl(Brave.newTabUrl)
       .waitForBrowserWindow()
       .waitForVisible(urlInput)
@@ -27,15 +28,13 @@ describe('Clear Browsing Panel', function () {
       const page1Url = Brave.server.url('page1.html')
       yield setup(this.app.client)
       yield this.app.client
-        .clearAppData({browserHistory: true})
         .tabByIndex(0)
         .loadUrl(page1Url)
         .waitForBrowserWindow()
         .waitUntil(function () {
-          return this.getAppState().then((val) =>
-            val.value.sites.length === 1 &&
-              val.value.about.history.entries.length === 1 &&
-              val.value.about.newtab.sites.length === 1)
+          return this.getAppState().then((val) => {
+            return val.value.sites.length === 1
+          })
         })
     })
 
@@ -75,7 +74,6 @@ describe('Clear Browsing Panel', function () {
       const page1Url = Brave.server.url('page1.html')
       yield setup(this.app.client)
       yield this.app.client
-        .clearAppData({browserHistory: true})
         .tabByIndex(0)
         .loadUrl(page1Url)
         .waitForBrowserWindow()

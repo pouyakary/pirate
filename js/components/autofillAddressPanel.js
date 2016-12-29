@@ -8,7 +8,7 @@ const Dialog = require('./dialog')
 const Button = require('./button')
 const windowActions = require('../actions/windowActions')
 const appActions = require('../actions/appActions')
-const KeyCodes = require('../../app/common/constants/keyCodes')
+const KeyCodes = require('../constants/keyCodes')
 
 class AutofillAddressPanel extends ImmutableComponent {
   constructor () {
@@ -88,16 +88,6 @@ class AutofillAddressPanel extends ImmutableComponent {
   onClick (e) {
     e.stopPropagation()
   }
-  get disableSaveButton () {
-    let currentDetail = this.props.currentDetail
-    if (!currentDetail.size) return true
-    if (!currentDetail.get('name') && !currentDetail.get('organization') &&
-      !currentDetail.get('streetAddress') && !currentDetail.get('city') &&
-      !currentDetail.get('state') && !currentDetail.get('country') &&
-      !currentDetail.get('phone') && !currentDetail.get('email')) return true
-    return false
-  }
-
   render () {
     return <Dialog onHide={this.props.onHide} className='manageAutofillDataPanel autofillAddressPanel' isClickDismiss>
       <div className='genericForm manageAutofillData' onClick={this.onClick}>
@@ -150,9 +140,8 @@ class AutofillAddressPanel extends ImmutableComponent {
               value={this.props.currentDetail.get('email')} />
           </div>
           <div className='formRow manageAutofillDataButtons'>
-            <Button l10nId='cancel' className='whiteButton' onClick={this.props.onHide} />
-            <Button l10nId='save' className='primaryButton saveAddressButton' onClick={this.onSave}
-              disabled={this.disableSaveButton} />
+            <Button l10nId='cancel' className='secondaryAltButton' onClick={this.props.onHide} />
+            <Button l10nId='save' className='primaryButton saveAddressButton' onClick={this.onSave} />
           </div>
         </div>
       </div>

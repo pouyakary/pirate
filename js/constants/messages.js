@@ -12,6 +12,7 @@ const messages = {
   SHORTCUT_ACTIVE_FRAME_STOP: _,
   SHORTCUT_ACTIVE_FRAME_RELOAD: _,
   SHORTCUT_ACTIVE_FRAME_CLEAN_RELOAD: _,
+  SHORTCUT_ACTIVE_FRAME_CLONE: _,
   SHORTCUT_ACTIVE_FRAME_ZOOM_IN: _,
   SHORTCUT_ACTIVE_FRAME_ZOOM_OUT: _,
   SHORTCUT_ACTIVE_FRAME_ZOOM_RESET: _,
@@ -37,6 +38,7 @@ const messages = {
   SHORTCUT_UNDO_CLOSED_FRAME: _,
   SHORTCUT_FRAME_MUTE: _,
   SHORTCUT_FRAME_RELOAD: _, /** @arg {number} key of frame */
+  SHORTCUT_FRAME_CLONE: _, /** @arg {number} key of frame, @arg {object} options such as openInForeground */
   SHORTCUT_NEXT_TAB: _,
   SHORTCUT_PREV_TAB: _,
   SHORTCUT_OPEN_CLEAR_BROWSING_DATA_PANEL: _,
@@ -55,6 +57,7 @@ const messages = {
   UPDATE_AVAILABLE: _,
   UPDATE_NOT_AVAILABLE: _,
   CHECK_FOR_UPDATE: _,
+  SHOW_ABOUT: _,
   UPDATE_META_DATA_RETRIEVED: _,
   // App state
   APP_INITIALIZED: _,
@@ -74,6 +77,7 @@ const messages = {
   RELOAD: _,
   ENABLE_SWIPE_GESTURE: _,
   DISABLE_SWIPE_GESTURE: _,
+  SHOW_FLASH_NOTIFICATION: _,
   // Password manager
   GET_PASSWORDS: _, /** @arg {string} formOrigin, @arg {string} action */
   GOT_PASSWORD: _, /** @arg {string} username, @arg {string} password, @arg {string} origin, @arg {string} action, @arg {boolean} isUnique */
@@ -107,11 +111,12 @@ const messages = {
   EXTENSIONS_UPDATED: _,
   ADBLOCK_UPDATED: _,
   DOWNLOADS_UPDATED: _,
-  NEWTAB_DATA_UPDATED: _,
-  VERSION_INFORMATION_UPDATED: _,
+  FLASH_UPDATED: _,
   // About pages from contentScript
+  OPEN_DOWNLOAD_PATH: _,
   RELOAD_URL: _,
   DISPATCH_ACTION: _,
+  CHECK_FLASH_INSTALLED: _,
   ABOUT_COMPONENT_INITIALIZED: _,
   CLEAR_BROWSING_DATA_NOW: _,
   IMPORT_BROWSER_DATA_NOW: _,
@@ -140,15 +145,11 @@ const messages = {
   // Debugging
   DEBUG_REACT_PROFILE: _,
   // Ledger
-  LEDGER_PAYMENTS_PRESENT: _,
   LEDGER_PUBLISHER: _,
   LEDGER_UPDATED: _,
   LEDGER_CREATE_WALLET: _,
   CHECK_BITCOIN_HANDLER: _,
-  ADD_FUNDS_CLOSED: _,
-  RENDER_URL_TO_PDF: _,
-  // Torrent
-  TORRENT_MESSAGE: _
+  ADD_FUNDS_CLOSED: _
 }
 
 module.exports = mapValuesByKeys(messages)

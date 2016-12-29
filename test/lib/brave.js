@@ -1,4 +1,3 @@
-/* globals devTools */
 var Application = require('spectron').Application
 var chai = require('chai')
 require('./coMocha')
@@ -6,21 +5,13 @@ require('./coMocha')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
-const {getTargetAboutUrl, isSourceAboutUrl, getBraveExtIndexHTML} = require('../../js/lib/appUrlUtil')
+const {getTargetAboutUrl, isSourceAboutUrl} = require('../../js/lib/appUrlUtil')
 
 var chaiAsPromised = require('chai-as-promised')
 chai.should()
 chai.use(chaiAsPromised)
 
 const Server = require('./server')
-
-// toggle me for more verbose logs! :)
-const logVerboseEnabled = process.env.BRAVE_TEST_ALL_LOGS || process.env.BRAVE_TEST_COMMAND_LOGS
-const logVerbose = (string, ...rest) => {
-  if (logVerboseEnabled) {
-    console.log(string, ...rest)
-  }
-}
 
 const generateUserDataDir = () => {
   return path.join(os.tmpdir(), 'brave-test', (new Date().getTime()) + Math.floor(Math.random() * 1000).toString())
@@ -75,20 +66,11 @@ var exports = {
     CONTROL: '\ue009',
     ESCAPE: '\ue00c',
     RETURN: '\ue006',
-    ENTER: '\ue007',
-    SHIFT: '\ue008',
-    BACKSPACE: '\ue003',
-    DELETE: '\ue017',
-    DOWN: '\ue015'
+    SHIFT: '\ue008'
   },
 
-  defaultTimeout: 10000,
-
-  browserWindowUrl: getBraveExtIndexHTML(),
+  browserWindowUrl: 'file://' + path.resolve(__dirname, '..', '..') + '/app/extensions/brave/index.html',
   newTabUrl: 'chrome-extension://mnojpmjdmbbfmejpflffifhffcmidifd/about-newtab.html',
-  fixtureUrl: function (filename) {
-    return 'file://' + path.resolve(__dirname, '..', 'fixtures', filename)
-  },
 
   beforeAllServerSetup: function (context) {
     context.beforeAll(function (done) {
@@ -154,13 +136,13 @@ var exports = {
   addCommands: function () {
     this.app.client.addCommand('ipcSend', function (message, ...param) {
       return this.execute(function (message, ...param) {
-        return devTools('electron').remote.getCurrentWindow().webContents.send(message, ...param)
+        return require('electron').remote.getCurrentWindow().webContents.send(message, ...param)
       }, message, ...param).then((response) => response.value)
     })
 
     this.app.client.addCommand('ipcSendRenderer', function (message, ...param) {
       return this.execute(function (message, ...param) {
-        return devTools('electron').ipcRenderer.send(message, ...param)
+        return require('electron').ipcRenderer.send(message, ...param)
       }, message, ...param).then((response) => response.value)
     })
 
@@ -199,9 +181,9 @@ var exports = {
             var newHandles = []
             for (var i = 0; i < urls.length; i++) {
               // ignore extension urls unless they are "about" pages
-              if (!(urls[i].startsWith('chrome-extension') && !urls[i].match(/about-.*\.html(#.*)?$/)) &&
+              if (!(urls[i].startsWith('chrome-extension') && !urls[i].match(/about-.*\.html$/)) &&
                   // ignore window urls
-                  !urls[i].startsWith('chrome://brave')) {
+                  !urls[i].startsWith('file:')) {
                 newHandles.push(handles[i])
               }
             }
@@ -212,123 +194,68 @@ var exports = {
     })
 
     this.app.client.addCommand('tabByIndex', function (index) {
-      logVerbose('tabByIndex(' + index + ')')
       return this.tabHandles().then((response) => response.value).then(function (handles) {
-        logVerbose('tabHandles() => handles.length = ' + handles.length + '; handles[' + index + '] = "' + handles[index] + '";')
         return this.window(handles[index])
       })
     })
 
     this.app.client.addCommand('getTabCount', function () {
       return this.tabHandles().then((response) => response.value).then(function (handles) {
-        logVerbose('getTabCount() => ' + handles.length)
         return handles.length
       })
     })
 
     this.app.client.addCommand('waitForBrowserWindow', function () {
       return this.waitUntil(function () {
-        logVerbose('waitForBrowserWindow()')
-        return this.windowByUrl(exports.browserWindowUrl).then((response) => {
-          logVerbose('waitForBrowserWindow() => ' + JSON.stringify(response))
-          return response
-        }, () => {
-          logVerbose('waitForBrowserWindow() => false')
-          return false
-        })
+        return this.windowByUrl(exports.browserWindowUrl).then((response) => response, () => false)
       })
     })
 
     this.app.client.addCommand('waitForUrl', function (url) {
       return this.waitUntil(function () {
-        logVerbose('waitForUrl("' + url + '")')
-        return this.tabByUrl(url).then((response) => {
-          logVerbose('tabByUrl("' + url + '") => ' + JSON.stringify(response))
-          return response
-        }, () => {
-          logVerbose('tabByUrl("' + url + '") => false')
-          return false
-        })
+        return this.tabByUrl(url).then((response) => response, () => false)
       })
-    })
-
-    this.app.client.addCommand('waitForSelectedText', function (text) {
-      return this.waitUntil(function () {
-        return this.getSelectedText(text).then((value) => { return value === text })
-      })
-    })
-
-    this.app.client.addCommand('waitForTabCount', function (tabCount) {
-      logVerbose('waitForTabCount(' + tabCount + ')')
-      return this.waitUntil(function () {
-        return this.getTabCount().then((count) => {
-          return count === tabCount
-        })
-      })
-    })
-
-    this.app.client.addCommand('waitForResourceReady', function (resourceName) {
-      logVerbose('waitForResourceReady(' + resourceName + ')')
-      return this.waitUntil(function () {
-        return this.getAppState().then((val) => {
-          logVerbose('waitForResourceReady("' + resourceName + '") => ' + JSON.stringify(val.value[resourceName]))
-          return val.value[resourceName] && val.value[resourceName].ready
-        })
-      }, 20000)
     })
 
     this.app.client.addCommand('loadUrl', function (url) {
       if (isSourceAboutUrl(url)) {
         url = getTargetAboutUrl(url)
       }
-      logVerbose('loadUrl("' + url + '")')
-
-      return this.url(url).then((response) => {
-        logVerbose('loadUrl.url() => ' + JSON.stringify(response))
-      }, (error) => {
-        logVerbose('loadUrl.url() => ERROR: ' + JSON.stringify(error))
-      }).waitForUrl(url)
+      return this.url(url).waitForUrl(url)
     })
 
     this.app.client.addCommand('getAppState', function () {
       return this.execute(function () {
-        return devTools('electron').testData.appStoreRenderer.state.toJS()
+        return window.appStoreRenderer.state.toJS()
       })
     })
 
     this.app.client.addCommand('getWindowState', function () {
       return this.execute(function () {
-        return devTools('electron').testData.windowStore.state.toJS()
+        return window.windowStore.state.toJS()
       })
     })
 
     this.app.client.addCommand('setContextMenuDetail', function () {
       return this.execute(function () {
-        return devTools('electron').testData.windowActions.setContextMenuDetail()
+        return window.windowActions.setContextMenuDetail()
       })
     })
 
     this.app.client.addCommand('showFindbar', function (show, key = 1) {
       return this.execute(function (show, key) {
-        devTools('electron').testData.windowActions.setFindbarShown(Object.assign({
-          windowId: devTools('electron').remote.getCurrentWindow().id,
+        window.windowActions.setFindbarShown(Object.assign({
+          windowId: require('electron').remote.getCurrentWindow().id,
           key
         }), show !== false)
       }, show, key)
     })
 
-    this.app.client.addCommand('openBraveMenu', function (braveMenu, braveryPanel) {
-      logVerbose('openBraveMenu()')
-      return this.windowByUrl(exports.browserWindowUrl)
-        .waitForVisible(braveMenu)
-        .click(braveMenu)
-        .waitForVisible(braveryPanel)
-    })
-
     this.app.client.addCommand('setPinned', function (location, isPinned, options = {}) {
       return this.execute(function (location, isPinned, options) {
-        devTools('electron').testData.windowActions.setPinned(devTools('immutable').fromJS(Object.assign({
-          windowId: devTools('electron').remote.getCurrentWindow().id,
+        var Immutable = require('immutable')
+        window.windowActions.setPinned(Immutable.fromJS(Object.assign({
+          windowId: require('electron').remote.getCurrentWindow().id,
           location
         }, options)), isPinned)
       }, location, isPinned, options)
@@ -336,13 +263,13 @@ var exports = {
 
     this.app.client.addCommand('ipcOn', function (message, fn) {
       return this.execute(function (message, fn) {
-        return devTools('electron').remote.getCurrentWindow().webContents.on(message, fn)
+        return require('electron').remote.getCurrentWindow().webContents.on(message, fn)
       }, message, fn).then((response) => response.value)
     })
 
     this.app.client.addCommand('newWindowAction', function (frameOpts, browserOpts) {
       return this.execute(function () {
-        return devTools('appActions').newWindow()
+        return require('../../../js/actions/appActions').newWindow()
       }, frameOpts, browserOpts).then((response) => response.value)
     })
 
@@ -354,7 +281,7 @@ var exports = {
      */
     this.app.client.addCommand('addSite', function (siteDetail, tag) {
       return this.execute(function (siteDetail, tag) {
-        return devTools('appActions').addSite(siteDetail, tag)
+        return require('../../../js/actions/appActions').addSite(siteDetail, tag)
       }, siteDetail, tag).then((response) => response.value)
     })
 
@@ -365,35 +292,8 @@ var exports = {
      */
     this.app.client.addCommand('addSiteList', function (siteDetail) {
       return this.execute(function (siteDetail) {
-        return devTools('appActions').addSite(siteDetail)
+        return require('../../../js/actions/appActions').addSite(siteDetail)
       }, siteDetail).then((response) => response.value)
-    })
-
-    /**
-     * Enables or disables the specified resource.
-     *
-     * @param {string} resourceName - The resource to enable or disable
-     * @param {boolean} enabled - Whether to enable or disable the resource
-     */
-    this.app.client.addCommand('setResourceEnabled', function (resourceName, enabled) {
-      return this.execute(function (resourceName, enabled) {
-        return devTools('appActions').setResourceEnabled(resourceName, enabled)
-      }, resourceName, enabled).then((response) => response.value)
-    })
-
-    /**
-     * Clones the specified tab
-     *
-     * @param {number} index - The index of the tabId to clone
-     * @param {Object} options - options to pass to clone
-     */
-    this.app.client.addCommand('cloneTabByIndex', function (index, options) {
-      return this.getWindowState().then((val) => {
-        const tabId = val.value.frames[index].tabId
-        return this.execute(function (tabId, options) {
-          return devTools('appActions').tabCloned(tabId, options)
-        }, tabId, options).then((response) => response.value)
-      })
     })
 
     /**
@@ -404,7 +304,7 @@ var exports = {
      */
     this.app.client.addCommand('removeSite', function (siteDetail, tag) {
       return this.execute(function (siteDetail, tag) {
-        return devTools('appActions').removeSite(siteDetail, tag)
+        return require('../../../js/actions/appActions').removeSite(siteDetail, tag)
       }, siteDetail, tag).then((response) => response.value)
     })
 
@@ -416,7 +316,7 @@ var exports = {
      */
     this.app.client.addCommand('changeSetting', function (key, value) {
       return this.execute(function (key, value) {
-        return devTools('appActions').changeSetting(key, value)
+        return require('../../../js/actions/appActions').changeSetting(key, value)
       }, key, value).then((response) => response.value)
     })
 
@@ -428,7 +328,7 @@ var exports = {
      */
     this.app.client.addCommand('changeSiteSetting', function (hostPattern, key, value) {
       return this.execute(function (hostPattern, key, value) {
-        return devTools('appActions').changeSiteSetting(hostPattern, key, value)
+        return require('../../../js/actions/appActions').changeSiteSetting(hostPattern, key, value)
       }, hostPattern, key, value).then((response) => response.value)
     })
 
@@ -439,13 +339,13 @@ var exports = {
      */
     this.app.client.addCommand('clearAppData', function (clearDataDetail) {
       return this.execute(function (clearDataDetail) {
-        return devTools('appActions').clearAppData(clearDataDetail)
+        return require('../../../js/actions/appActions').clearAppData(clearDataDetail)
       }, clearDataDetail).then((response) => response.value)
     })
 
     this.app.client.addCommand('getDefaultWindowHeight', function () {
       return this.execute(function () {
-        let screen = devTools('electron').remote.screen
+        let screen = require('electron').screen
         let primaryDisplay = screen.getPrimaryDisplay()
         return primaryDisplay.workAreaSize.height
       }).then((response) => response.value)
@@ -453,7 +353,7 @@ var exports = {
 
     this.app.client.addCommand('getDefaultWindowWidth', function () {
       return this.execute(function () {
-        let screen = devTools('electron').remote.screen
+        let screen = require('electron').screen
         let primaryDisplay = screen.getPrimaryDisplay()
         return primaryDisplay.workAreaSize.width
       }).then((response) => response.value)
@@ -461,27 +361,21 @@ var exports = {
 
     this.app.client.addCommand('getPrimaryDisplayHeight', function () {
       return this.execute(function () {
-        let screen = devTools('electron').remote.screen
+        let screen = require('electron').screen
         return screen.getPrimaryDisplay().bounds.height
-      }).then((response) => response.value)
-    })
-
-    this.app.client.addCommand('isDarwin', function () {
-      return this.execute(function () {
-        return navigator.platform === 'MacIntel'
       }).then((response) => response.value)
     })
 
     this.app.client.addCommand('getPrimaryDisplayWidth', function () {
       return this.execute(function () {
-        let screen = devTools('electron').remote.screen
+        let screen = require('electron').screen
         return screen.getPrimaryDisplay().bounds.width
       }).then((response) => response.value)
     })
 
     this.app.client.addCommand('resizeWindow', function (width, height) {
       return this.execute(function (width, height) {
-        return devTools('electron').remote.getCurrentWindow().setSize(width, height)
+        return require('electron').remote.getCurrentWindow().setSize(width, height)
       }, width, height).then((response) => response.value)
     })
 
@@ -542,7 +436,7 @@ var exports = {
         internal.viewInstanceId
         // This allows you to send more args than just the event itself like would only
         // be possible with dispatchEvent.
-        devTools('electron').ipcRenderer.emit('ELECTRON_GUEST_VIEW_INTERNAL_DISPATCH_EVENT-' + internal.viewInstanceId, ...params)
+        require('electron').ipcRenderer.emit('ELECTRON_GUEST_VIEW_INTERNAL_DISPATCH_EVENT-' + internal.viewInstanceId, ...params)
       }, frameKey, eventName, ...params).then((response) => response.value)
     })
 
@@ -559,15 +453,7 @@ var exports = {
         })
     })
 
-    this.app.client.addCommand('waitForDataFile', function (dataFile) {
-      logVerbose('waitForDataFile("' + dataFile + '")')
-      return this.waitUntil(function () {
-        return this.getAppState().then((val) => {
-          logVerbose('waitForDataFile("' + dataFile + '") => ' + JSON.stringify(val.value[dataFile]))
-          return val.value[dataFile] && val.value[dataFile].etag && val.value[dataFile].etag.length > 0
-        })
-      }, 10000)
-    })
+    this.app.client.waitUntilWindowLoaded().windowByUrl(exports.browserWindowUrl)
   },
 
   startApp: function () {
@@ -579,44 +465,31 @@ var exports = {
       BRAVE_USER_DATA_DIR: userDataDir
     }
     this.app = new Application({
-      // I don't think waitForInterval is actually used.
-      waitforInterval: 5,
-      waitforTimeout: exports.defaultTimeout,
-      quitTimeout: 0,
       path: './node_modules/.bin/electron',
       env,
-      args: ['./', '--debug=5858', '--enable-logging', '--v=1'],
-      requireName: 'devTools'
+      args: ['./', '--debug=5858', '--enable-logging', '--v=1']
     })
     return this.app.start()
   },
 
   stopApp: function (cleanSessionStore = true) {
-    let stop = this.app.stop().then((app) => {
-      if (cleanSessionStore) {
-        if (!process.env.KEEP_BRAVE_USER_DATA_DIR) {
-          userDataDir && rmDir(userDataDir)
-        }
-        userDataDir = generateUserDataDir()
+    if (cleanSessionStore) {
+      if (!process.env.KEEP_BRAVE_USER_DATA_DIR) {
+        userDataDir && rmDir(userDataDir)
       }
-      return app
-    })
-
-    if (process.env.BRAVE_TEST_ALL_LOGS || process.env.BRAVE_TEST_BROWSER_LOGS) {
-      this.app.client.getMainProcessLogs().then(function (logs) {
-        logs.forEach(function (log) {
-          console.log(log)
-        })
-      })
+      userDataDir = generateUserDataDir()
     }
-    if (process.env.BRAVE_TEST_ALL_LOGS || process.env.BRAVE_TEST_RENDERER_LOGS) {
-      this.app.client.getRenderProcessLogs().then(function (logs) {
-        logs.forEach(function (log) {
-          console.log(log)
-        })
-      })
-    }
-    return stop
+    // this.app.client.getMainProcessLogs().then(function (logs) {
+    //   logs.forEach(function (log) {
+    //     console.log(log)
+    //   })
+    // })
+    // this.app.client.getRenderProcessLogs().then(function (logs) {
+    //   logs.forEach(function (log) {
+    //     console.log(log)
+    //   })
+    // })
+    return this.app.stop()
   }
 }
 

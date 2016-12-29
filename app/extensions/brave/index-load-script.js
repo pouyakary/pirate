@@ -1,4 +1,4 @@
-var baseHref = 'http://localhost:8080' // + process.env.npm_package_config_port
+var baseHref = 'http://localhost:' + process.env.npm_package_config_port
 var appEntry = baseHref + '/gen/app.entry.js'
 
 var baseNode = document.createElement('base')
@@ -21,6 +21,4 @@ document.querySelector('#webpackLoading').style.display = 'block'
 createScript(appEntry).catch(function () {
   document.querySelector('#webpackLoading').style.display = 'none'
   document.querySelector('#setupError').style.display = 'block'
-}).then(() => {
-  createScript(baseHref + '/gen/lib.devTools.js')
 })

@@ -7,7 +7,7 @@ const crashReporter = require('electron').crashReporter
 
 exports.init = () => {
   const options = {
-    productName: 'Kary Brave',
+    productName: 'Brave Developers',
     companyName: 'Brave.com',
     submitURL: appConfig.crashes.crashSubmitUrl,
     autoSubmit: true,

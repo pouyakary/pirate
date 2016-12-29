@@ -9,7 +9,7 @@ const ImmutableComponent = require('../components/immutableComponent')
 const aboutActions = require('./aboutActions')
 const Button = require('../components/button')
 
-const ipc = window.chrome.ipcRenderer
+const ipc = window.chrome.ipc
 
 require('../../less/about/autofill.less')
 require('../../node_modules/font-awesome/css/font-awesome.css')
@@ -133,7 +133,7 @@ class AboutAutofill extends React.Component {
 
   render () {
     var savedAddresssPage = this.isAddresssEmpty
-    ? <div><span className='notSaved' data-l10n-id='noAddressesSaved' /></div>
+    ? <div><span data-l10n-id='noAddressesSaved' /></div>
     : <div>
       <table className='autofillList'>
         <thead>
@@ -162,7 +162,7 @@ class AboutAutofill extends React.Component {
     </div>
 
     var savedCreditCardsPage = this.isCreditCardsEmpty
-    ? <div><span className='notSaved' data-l10n-id='noCreditCardsSaved' /></div>
+    ? <div><span data-l10n-id='noCreditCardsSaved' /></div>
     : <div>
       <table className='autofillList'>
         <thead>

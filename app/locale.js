@@ -21,7 +21,6 @@ var rendererIdentifiers = function () {
     'goToPrefs',
     'goToAdobe',
     'allowFlashPlayer',
-    'allowWidevine',
     'about',
     'aboutApp',
     'quit',
@@ -40,11 +39,8 @@ var rendererIdentifiers = function () {
     'allowFlashAlways',
     'openInNewWindow',
     'openInNewSessionTab',
-    'openInNewSessionTabs',
     'openInNewPrivateTab',
-    'openInNewPrivateTabs',
     'openInNewTab',
-    'openInNewTabs',
     'openAllInTabs',
     'disableAdBlock',
     'disableTrackingProtection',
@@ -54,15 +50,8 @@ var rendererIdentifiers = function () {
     'unpinTab',
     'deleteFolder',
     'deleteBookmark',
-    'deleteBookmarks',
     'deleteHistoryEntry',
-    'deleteHistoryEntries',
     'deleteLedgerEntry',
-    'ledgerBackupText1',
-    'ledgerBackupText2',
-    'ledgerBackupText3',
-    'ledgerBackupText4',
-    'ledgerBackupText5',
     'editFolder',
     'editBookmark',
     'unmuteTabs',
@@ -125,7 +114,6 @@ var rendererIdentifiers = function () {
     'clearCache',
     'clearHistory',
     'clearSiteData',
-    'clearBrowsingData',
     'recentlyClosed',
     'recentlyVisited',
     'bookmarks',
@@ -197,7 +185,6 @@ var rendererIdentifiers = function () {
     'reconciliationNotification',
     'reviewSites',
     'addFunds',
-    'turnOffNotifications',
     'copyToClipboard',
     'smartphoneTitle',
     'displayQRCode',
@@ -210,7 +197,6 @@ var rendererIdentifiers = function () {
     'notificationTryPayments',
     'notificationTryPaymentsYes',
     'prefsRestart',
-    'dismiss',
     'yes',
     'no',
     'noThanks',
@@ -243,21 +229,11 @@ var ctx = null
 var translations = {}
 var lang = 'en-US'
 
-// todo: FSI/PDI stripping can probably be replaced once
-// https://github.com/l20n/l20n.js/commit/2fea50bf43c43a8e930a519a37f0f64f3626e885
-// is released
-const FSI = '\u2068'
-const PDI = '\u2069'
-
 // Return a translate token from cache or a placeholder
 // indicating that no translation is available
-exports.translation = function (token, replacements = {}) {
+exports.translation = function (token) {
   if (translations[token]) {
-    let returnVal = translations[token]
-    for (var key in replacements) {
-      returnVal = returnVal.replace(new RegExp(FSI + '{{\\s*' + key + '\\s*}}' + PDI), replacements[key])
-    }
-    return returnVal
+    return translations[token]
   } else {
     // This will return an identifier in upper case useful for determining if a translation was not requested in the menu
     // identifiers above.

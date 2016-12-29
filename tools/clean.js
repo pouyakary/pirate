@@ -1,10 +1,22 @@
 const path = require('path')
+const proc = require('child_process')
 const rimraf = require('./lib/rimraf')
 
 const rootDir = path.join(__dirname, '..')
 
-process.env.NODE_ENV = process.env.NODE_ENV || 'development'
-const runUtilApp = require('./utilAppRunner')
+function runUtilApp (cmd, file) {
+  process.env.NODE_ENV = process.env.NODE_ENV || 'development'
+  const utilAppDir = path.join(__dirname, 'lib', 'utilApp')
+  const options = {
+    env: process.env,
+    cwd: utilAppDir
+  }
+  cmd = cmd.split(' ')
+  const utilApp = proc.spawnSync('electron', [utilAppDir].concat(cmd), options)
+  if (utilApp.error) {
+    console.log('Could not run utilApp - run `npm install electron-prebuilt` and try again', utilApp.error)
+  }
+}
 
 module.exports.nodeModules = () => {
   console.warn('removing node_modules...')

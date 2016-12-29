@@ -21,7 +21,6 @@ const eventUtil = require('../lib/eventUtil')
 const cx = require('../lib/classSet')
 const locale = require('../l10n')
 const windowStore = require('../stores/windowStore')
-const suggestion = require('../../app/renderer/lib/suggestion')
 
 class UrlBarSuggestions extends ImmutableComponent {
   constructor (props) {
@@ -150,8 +149,8 @@ class UrlBarSuggestions extends ImmutableComponent {
       }))
       index += suggestions.size
     }
-    addToItems(historySuggestions, 'historyTitle', locale.translation('historySuggestionTitle'), 'fa-clock-o')
     addToItems(bookmarkSuggestions, 'bookmarksTitle', locale.translation('bookmarksSuggestionTitle'), 'fa-star-o')
+    addToItems(historySuggestions, 'historyTitle', locale.translation('historySuggestionTitle'), 'fa-clock-o')
     addToItems(aboutPagesSuggestions, 'aboutPagesTitle', locale.translation('aboutPagesSuggestionTitle'), null)
     addToItems(tabSuggestions, 'tabsTitle', locale.translation('tabsSuggestionTitle'), 'fa-external-link')
     addToItems(searchSuggestions, 'searchTitle', locale.translation('searchSuggestionTitle'), 'fa-search')
@@ -169,27 +168,19 @@ class UrlBarSuggestions extends ImmutableComponent {
     this.updateSuggestions(parseInt(e.target.dataset.index, 10))
   }
 
-  componentDidMount () {
-    if (this.props.urlLocation.length > 0) {
-      this.suggestionList = this.getNewSuggestionList(this.props)
-      this.searchXHR(this.props, true)
-    }
-  }
-
   componentWillUpdate (nextProps) {
     if (this.selectedElement) {
       this.selectedElement.scrollIntoView()
     }
+
     // If both the URL is the same and the number of sites to consider is
     // the same then we don't need to regenerate the suggestions list.
     if (this.props.urlLocation === nextProps.urlLocation &&
-        this.props.sites.size === nextProps.sites.size &&
-        // Make sure to update if there are online suggestions
-        this.props.searchResults.size === nextProps.searchResults.size) {
+        this.props.sites.size === nextProps.sites.size) {
       return
     }
     this.suggestionList = this.getNewSuggestionList(nextProps)
-    this.searchXHR(nextProps, !(this.props.urlLocation === nextProps.urlLocation))
+    this.searchXHR(nextProps)
   }
 
   getNewSuggestionList (props) {
@@ -209,8 +200,6 @@ class UrlBarSuggestions extends ImmutableComponent {
       delete this.shiftKey
 
       const location = formatUrl(site)
-      // When clicked make sure to hide autocomplete
-      windowActions.setRenderUrlBarSuggestions(false)
       if (eventUtil.isForSecondaryAction(e)) {
         windowActions.newFrame({
           location,
@@ -252,13 +241,9 @@ class UrlBarSuggestions extends ImmutableComponent {
         }
       })
 
-    const shouldNormalize = suggestion.shouldNormalizeLocation(urlLocationLower)
-    const urlLocationLowerNormalized = suggestion.normalizeLocation(urlLocationLower)
     const sortBasedOnLocationPos = (s1, s2) => {
-      const location1 = shouldNormalize ? suggestion.normalizeLocation(s1.get('location')) : s1.get('location')
-      const location2 = shouldNormalize ? suggestion.normalizeLocation(s2.get('location')) : s2.get('location')
-      const pos1 = location1.indexOf(urlLocationLowerNormalized)
-      const pos2 = location2.indexOf(urlLocationLowerNormalized)
+      const pos1 = s1.get('location').indexOf(urlLocationLower)
+      const pos2 = s2.get('location').indexOf(urlLocationLower)
       if (pos1 === -1 && pos2 === -1) {
         return 0
       } else if (pos1 === -1) {
@@ -269,54 +254,10 @@ class UrlBarSuggestions extends ImmutableComponent {
         if (pos1 - pos2 !== 0) {
           return pos1 - pos2
         } else {
-          // sort site.com higher than site.com/somepath
-          const sdnv1 = suggestion.simpleDomainNameValue(s1)
-          const sdnv2 = suggestion.simpleDomainNameValue(s2)
-          if (sdnv1 !== sdnv2) {
-            return sdnv2 - sdnv1
-          } else {
-            // If there's a tie on the match location, use the age
-            // decay modified access count
-            return suggestion.sortByAccessCountWithAgeDecay(s1, s2)
-          }
+          // If there's a tie on the match location, use the shorter URL
+          return s1.get('location').length - s2.get('location').length
         }
       }
-    }
-
-    const historyFilter = (site) => {
-      if (!site) {
-        return false
-      }
-      const title = site.get('title') || ''
-      const location = site.get('location') || ''
-      // Note: Bookmark sites are now included in history. This will allow
-      // sites to appear in the auto-complete regardless of their bookmark
-      // status. If history is turned off, bookmarked sites will appear
-      // in the bookmark section.
-      return (title.toLowerCase().includes(urlLocationLower) ||
-              location.toLowerCase().includes(urlLocationLower)) &&
-              site.get('lastAccessedTime')
-    }
-    var historySites = props.sites.filter(historyFilter)
-
-    // potentially append virtual history items (such as www.google.com when
-    // searches have been made but the root site has not been visited)
-    historySites = historySites.concat(suggestion.createVirtualHistoryItems(historySites))
-
-    // history
-    if (getSetting(settings.HISTORY_SUGGESTIONS)) {
-      suggestions = suggestions.concat(mapListToElements({
-        data: historySites,
-        maxResults: config.urlBarSuggestions.maxHistorySites,
-        type: suggestionTypes.HISTORY,
-        clickHandler: navigateClickHandler((site) => {
-          return site.get('location')
-        }),
-        sortHandler: sortBasedOnLocationPos,
-        formatTitle: (site) => site.get('title'),
-        formatUrl: (site) => site.get('location'),
-        filterValue: historyFilter
-      }))
     }
 
     // bookmarks
@@ -337,6 +278,28 @@ class UrlBarSuggestions extends ImmutableComponent {
           return (title.toLowerCase().includes(urlLocationLower) ||
             location.toLowerCase().includes(urlLocationLower)) &&
             site.get('tags') && site.get('tags').includes(siteTags.BOOKMARK)
+        }
+      }))
+    }
+
+    // history
+    if (getSetting(settings.HISTORY_SUGGESTIONS)) {
+      suggestions = suggestions.concat(mapListToElements({
+        data: props.sites,
+        maxResults: config.urlBarSuggestions.maxHistorySites,
+        type: suggestionTypes.HISTORY,
+        clickHandler: navigateClickHandler((site) => {
+          return site.get('location')
+        }),
+        sortHandler: sortBasedOnLocationPos,
+        formatTitle: (site) => site.get('title'),
+        formatUrl: (site) => site.get('location'),
+        filterValue: (site) => {
+          const title = site.get('title') || ''
+          const location = site.get('location') || ''
+          return (title.toLowerCase().includes(urlLocationLower) ||
+            location.toLowerCase().includes(urlLocationLower)) &&
+            (!site.get('tags') || site.get('tags').size === 0)
         }
       }))
     }
@@ -407,7 +370,7 @@ class UrlBarSuggestions extends ImmutableComponent {
     windowActions.setUrlBarSuggestions(suggestions, newIndex)
   }
 
-  searchXHR (props, searchOnline) {
+  searchXHR (props) {
     props = props || this.props
     let autocompleteURL = props.searchSelectEntry
     ? props.searchSelectEntry.autocomplete : props.searchDetail.get('autocompleteURL')
@@ -423,20 +386,14 @@ class UrlBarSuggestions extends ImmutableComponent {
         const replaceRE = new RegExp('^' + props.searchSelectEntry.shortcut + ' ', 'g')
         urlLocation = urlLocation.replace(replaceRE, '')
       }
-      // Render all suggestions asap
-      this.updateSuggestions(props.selectedIndex)
-
-      if (searchOnline) {
-        const xhr = new window.XMLHttpRequest({mozSystem: true})
-        xhr.open('GET', autocompleteURL
-          .replace('{searchTerms}', encodeURIComponent(urlLocation)), true)
-        xhr.responseType = 'json'
-        xhr.send()
-        xhr.onload = () => {
-          // Once we have the online suggestions, append them to the others
-          windowActions.setUrlBarSuggestionSearchResults(Immutable.fromJS(xhr.response[1]))
-          this.updateSuggestions(props.selectedIndex)
-        }
+      const xhr = new window.XMLHttpRequest({mozSystem: true})
+      xhr.open('GET', autocompleteURL
+        .replace('{searchTerms}', encodeURIComponent(urlLocation)), true)
+      xhr.responseType = 'json'
+      xhr.send()
+      xhr.onload = () => {
+        windowActions.setUrlBarSuggestionSearchResults(Immutable.fromJS(xhr.response[1]))
+        this.updateSuggestions(props.selectedIndex)
       }
     } else {
       windowActions.setUrlBarSuggestionSearchResults(Immutable.fromJS([]))

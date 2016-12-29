@@ -5,12 +5,11 @@
 const React = require('react')
 const ImmutableComponent = require('./immutableComponent')
 const Immutable = require('immutable')
-const electron = require('electron')
+const electron = global.require('electron')
 const ipc = electron.ipcRenderer
-// const systemPreferences = electron.remote.systemPreferences
+const systemPreferences = electron.remote.systemPreferences
 
 // Actions
-const appActions = require('../actions/appActions')
 const windowActions = require('../actions/windowActions')
 const webviewActions = require('../actions/webviewActions')
 const contextMenus = require('../contextMenus')
@@ -24,46 +23,41 @@ const TabsToolbar = require('./tabsToolbar')
 const FindBar = require('./findbar')
 const UpdateBar = require('./updateBar')
 const NotificationBar = require('./notificationBar')
-const DownloadsBar = require('../../app/renderer/components/downloadsBar')
+const DownloadsBar = require('./downloadsBar')
 const Button = require('./button')
 const BrowserActionButton = require('../../app/renderer/components/browserActionButton')
 const SiteInfo = require('./siteInfo')
 const BraveryPanel = require('./braveryPanel')
 const ClearBrowsingDataPanel = require('./clearBrowsingDataPanel')
 const ImportBrowserDataPanel = require('../../app/renderer/components/importBrowserDataPanel')
-const WidevinePanel = require('../../app/renderer/components/widevinePanel')
 const AutofillAddressPanel = require('./autofillAddressPanel')
 const AutofillCreditCardPanel = require('./autofillCreditCardPanel')
 const AddEditBookmark = require('./addEditBookmark')
 const LoginRequired = require('./loginRequired')
 const ReleaseNotes = require('./releaseNotes')
-const BookmarksToolbar = require('../../app/renderer/components/bookmarksToolbar')
+const BookmarksToolbar = require('./bookmarksToolbar')
 const ContextMenu = require('./contextMenu')
 const PopupWindow = require('./popupWindow')
 const NoScriptInfo = require('./noScriptInfo')
 const LongPressButton = require('./longPressButton')
 const Menubar = require('../../app/renderer/components/menubar')
 const WindowCaptionButtons = require('../../app/renderer/components/windowCaptionButtons')
-const CheckDefaultBrowserDialog = require('../../app/renderer/components/checkDefaultBrowserDialog')
+
 // Constants
+const config = require('../constants/config')
 const appConfig = require('../constants/appConfig')
 const messages = require('../constants/messages')
 const settings = require('../constants/settings')
 const siteTags = require('../constants/siteTags')
 const dragTypes = require('../constants/dragTypes')
-const keyCodes = require('../../app/common/constants/keyCodes')
-const keyLocations = require('../../app/common/constants/keyLocations')
+const keyCodes = require('../constants/keyCodes')
 const isWindows = process.platform === 'win32'
-const {bookmarksToolbarMode} = require('../../app/common/constants/settingsEnums')
 
 // State handling
 const basicAuthState = require('../../app/common/state/basicAuthState')
 const extensionState = require('../../app/common/state/extensionState')
-const aboutHistoryState = require('../../app/common/state/aboutHistoryState')
 const FrameStateUtil = require('../state/frameStateUtil')
-const siteUtil = require('../state/siteUtil')
 const searchProviders = require('../data/searchProviders')
-const defaultBrowserState = require('../../app/common/state/defaultBrowserState')
 
 // Util
 const cx = require('../lib/classSet')
@@ -93,19 +87,16 @@ class Main extends ImmutableComponent {
     this.onHideBraveryPanel = this.onHideBraveryPanel.bind(this)
     this.onHideClearBrowsingDataPanel = this.onHideClearBrowsingDataPanel.bind(this)
     this.onHideImportBrowserDataPanel = this.onHideImportBrowserDataPanel.bind(this)
-    this.onHideWidevinePanel = this.onHideWidevinePanel.bind(this)
     this.onHideAutofillAddressPanel = this.onHideAutofillAddressPanel.bind(this)
     this.onHideAutofillCreditCardPanel = this.onHideAutofillCreditCardPanel.bind(this)
     this.onHideNoScript = this.onHideNoScript.bind(this)
     this.onHideReleaseNotes = this.onHideReleaseNotes.bind(this)
-    this.onHideCheckDefaultBrowserDialog = this.onHideCheckDefaultBrowserDialog.bind(this)
     this.onBraveMenu = this.onBraveMenu.bind(this)
     this.onHamburgerMenu = this.onHamburgerMenu.bind(this)
     this.onTabContextMenu = this.onTabContextMenu.bind(this)
     this.onFind = this.onFind.bind(this)
     this.onFindHide = this.onFindHide.bind(this)
     this.checkForTitleMode = debounce(this.checkForTitleMode.bind(this), 20)
-    this.lastKeyPressed = undefined
   }
   registerWindowLevelShortcuts () {
     // For window level shortcuts that don't work as local shortcuts
@@ -131,8 +122,6 @@ class Main extends ImmutableComponent {
           }
           break
       }
-
-      this.lastKeyPressed = e.which
     })
   }
 
@@ -142,25 +131,16 @@ class Main extends ImmutableComponent {
         const customTitlebar = this.customTitlebar
         switch (e.which) {
           case keyCodes.ALT:
-            // Ignore right alt (AltGr)
-            if (e.location === keyLocations.DOM_KEY_LOCATION_RIGHT) {
-              break
-            }
+            e.preventDefault()
 
-            // Only show/hide the menu if last key pressed was ALT
-            // (typing ALT codes should not toggle menu)
-            if (this.lastKeyPressed === keyCodes.ALT) {
-              e.preventDefault()
-
-              if (getSetting(settings.AUTO_HIDE_MENU)) {
-                windowActions.toggleMenubarVisible(null)
+            if (getSetting(settings.AUTO_HIDE_MENU)) {
+              windowActions.toggleMenubarVisible(null)
+            } else {
+              if (customTitlebar.menubarSelectedIndex) {
+                windowActions.setSubmenuSelectedIndex()
+                windowActions.setContextMenuDetail()
               } else {
-                if (customTitlebar.menubarSelectedIndex) {
-                  windowActions.setSubmenuSelectedIndex()
-                  windowActions.setContextMenuDetail()
-                } else {
-                  windowActions.setSubmenuSelectedIndex([0])
-                }
+                windowActions.setSubmenuSelectedIndex([0])
               }
             }
             break
@@ -219,7 +199,7 @@ class Main extends ImmutableComponent {
         deltaY = deltaY + e.deltaY
         time = (new Date()).getTime() - startTime
       }
-    }, { passive: true })
+    })
     ipc.on(messages.DEBUG_REACT_PROFILE, (e, args) => {
       window.perf = require('react-addons-perf')
       if (!window.perf.isRunning()) {
@@ -253,9 +233,8 @@ class Main extends ImmutableComponent {
       swipeGesture = false
     })
     ipc.on('scroll-touch-begin', function () {
-      if (swipeGesture) {
-        // TODO(Anthony): respecting system settings on cr54
-        // systemPreferences.isSwipeTrackingFromScrollEventsEnabled()) {
+      if (swipeGesture &&
+        systemPreferences.isSwipeTrackingFromScrollEventsEnabled()) {
         trackingFingers = true
         isSwipeOnEdge = false
         startTime = (new Date()).getTime()
@@ -288,27 +267,12 @@ class Main extends ImmutableComponent {
         if (entry.name === engine) {
           windowActions.setSearchDetail(Immutable.fromJS({
             searchURL: entry.search,
-            autocompleteURL: entry.autocomplete,
-            platformClientId: entry.platformClientId
+            autocompleteURL: entry.autocomplete
           }))
           this.lastLoadedSearchProviders = engine
           return false
         }
       })
-    }
-  }
-
-  componentWillUpdate (nextProps) {
-    if (!this.props.appState.getIn([appConfig.resourceNames.WIDEVINE, 'ready']) &&
-        nextProps.appState.getIn([appConfig.resourceNames.WIDEVINE, 'ready'])) {
-      const widevinePanelDetail = this.props.windowState.get('widevinePanelDetail')
-      // User may have enabled from preferences and no details are present
-      if (!widevinePanelDetail) {
-        return
-      }
-      const origin = siteUtil.getOrigin(widevinePanelDetail.get('location'))
-      // This automatically handles reloading the frame as well
-      appActions.changeSiteSetting(origin, appConfig.resourceNames.WIDEVINE, widevinePanelDetail.get('alsoAddRememberSiteSetting') ? 1 : 0)
     }
   }
 
@@ -344,8 +308,8 @@ class Main extends ImmutableComponent {
         }
       }
       let openInForeground = getSetting(settings.SWITCH_TO_NEW_TABS) === true || options.openInForeground
-      const frameOpts = options.frameOpts || {
-        location: url,
+      const frameOpts = {
+        location: url || config.defaultUrl,
         isPrivate: !!options.isPrivate,
         isPartitioned: !!options.isPartitioned,
         parentFrameKey: options.parentFrameKey
@@ -500,47 +464,38 @@ class Main extends ImmutableComponent {
     }, true)
 
     const activeFrame = FrameStateUtil.getActiveFrame(self.props.windowState)
-    if (activeFrame && activeFrame.get('title')) {
+    if (activeFrame) {
       currentWindow.setTitle(activeFrame.get('title'))
     }
 
     // Handlers for saving window state
     // TODO: revisit this code when window state moves to appStore
-    const slidingTimerMilliseconds = 1000
-
-    const onWindowResize = debounce(function (event) {
-      const size = event.sender.getSize()
-      // NOTE: the default window size is whatever the last window resize was
-      appActions.defaultWindowParamsChanged(size)
-      windowActions.saveSize(size)
-    }, slidingTimerMilliseconds)
-
-    const onWindowMove = debounce(function (event) {
-      const position = event.sender.getPosition()
-      // NOTE: the default window position is whatever the last window move was
-      appActions.defaultWindowParamsChanged(undefined, position)
-      windowActions.savePosition(position)
-    }, slidingTimerMilliseconds)
-
     currentWindow.on('maximize', function () {
       windowActions.setMaximizeState(true)
     })
+
     currentWindow.on('unmaximize', function () {
       windowActions.setMaximizeState(false)
     })
-    currentWindow.on('resize', onWindowResize)
-    currentWindow.on('move', onWindowMove)
-    currentWindow.on('focus', function () {
-      windowActions.onFocusChanged(true)
+
+    currentWindow.on('resize', function (event) {
+      windowActions.saveSize(event.sender.getSize())
     })
-    currentWindow.on('blur', function () {
-      appActions.windowBlurred(currentWindow.id)
-      windowActions.onFocusChanged(false)
+
+    let moveTimeout = null
+    currentWindow.on('move', function (event) {
+      if (moveTimeout) {
+        clearTimeout(moveTimeout)
+      }
+      moveTimeout = setTimeout(function () {
+        windowActions.savePosition(event.sender.getPosition())
+      }, 1000)
     })
     // Full screen as in F11 (not full screen on a video)
     currentWindow.on('enter-full-screen', function (event) {
       windowActions.setWindowFullScreen(true)
     })
+
     currentWindow.on('leave-full-screen', function (event) {
       windowActions.setWindowFullScreen(false)
     })
@@ -585,9 +540,9 @@ class Main extends ImmutableComponent {
     const isNavigatable = isNavigatableAboutPage(getBaseUrl(activeFrame.get('location')))
     if (e && eventUtil.isForSecondaryAction(e) && isNavigatable) {
       if (activeFrame && activeFrame.get(navCheckProp)) {
-        appActions.tabCloned(activeFrame.get('tabId'), {
+        currentWindow.webContents.send(messages.SHORTCUT_ACTIVE_FRAME_CLONE, {
           [navType]: true,
-          active: !!e.shiftKey
+          openInForeground: !!e.shiftKey
         })
       }
     } else {
@@ -603,12 +558,12 @@ class Main extends ImmutableComponent {
     this.onNav(e, 'canGoForward', 'forward', this.activeFrame.goForward)
   }
 
-  onBackLongPress (target) {
-    contextMenus.onBackButtonHistoryMenu(this.activeFrame, this.activeFrame.getHistory(this.props.appState), target)
+  onBackLongPress (rect) {
+    contextMenus.onBackButtonHistoryMenu(this.activeFrame, this.activeFrame.getHistory(this.props.appState), rect)
   }
 
-  onForwardLongPress (target) {
-    contextMenus.onForwardButtonHistoryMenu(this.activeFrame, this.activeFrame.getHistory(this.props.appState), target)
+  onForwardLongPress (rect) {
+    contextMenus.onForwardButtonHistoryMenu(this.activeFrame, this.activeFrame.getHistory(this.props.appState), rect)
   }
 
   onBraveMenu () {
@@ -638,12 +593,6 @@ class Main extends ImmutableComponent {
     windowActions.setImportBrowserDataDetail()
   }
 
-  onHideWidevinePanel () {
-    windowActions.widevinePanelDetailChanged({
-      shown: false
-    })
-  }
-
   onHideAutofillAddressPanel () {
     windowActions.setAutofillAddressDetail()
   }
@@ -658,10 +607,6 @@ class Main extends ImmutableComponent {
 
   onHideReleaseNotes () {
     windowActions.setReleaseNotesVisible(false)
-  }
-
-  onHideCheckDefaultBrowserDialog () {
-    windowActions.setModalDialogDetail('checkDefaultBrowserDialog')
   }
 
   enableNoScript (settings) {
@@ -700,15 +645,14 @@ class Main extends ImmutableComponent {
   }
 
   onMouseDown (e) {
-    // TODO(bsclifton): update this to use eventUtil.eventElHasAncestorWithClasses
+    // BSCTODO: update this to use eventUtil.eventElHasAncestorWithClasses
     let node = e.target
     while (node) {
       if (node.classList &&
           (node.classList.contains('popupWindow') ||
             node.classList.contains('contextMenu') ||
             node.classList.contains('extensionButton') ||
-            node.classList.contains('menubarItem') ||
-            node.classList.contains('bookmarkHanger'))) {
+            node.classList.contains('menubarItem'))) {
         // Middle click (on context menu) needs to fire the click event.
         // We need to prevent the default "Auto-Scrolling" behavior.
         if (node.classList.contains('contextMenu') && e.button === 1) {
@@ -741,9 +685,7 @@ class Main extends ImmutableComponent {
     windowActions.setFindbarShown(activeFrame, false)
     webviewActions.stopFindInPage()
     windowActions.setFindDetail(activeFrame, Immutable.fromJS({
-      internalFindStatePresent: false,
-      numberOfMatches: -1,
-      activeMatchOrdinal: 0
+      internalFindStatePresent: false
     }))
   }
 
@@ -840,17 +782,6 @@ class Main extends ImmutableComponent {
     }
   }
 
-  bindHistory (frame) {
-    if (frame.get('location') === 'about:history') {
-      const history = aboutHistoryState.getHistory(this.props.appState)
-      if (history) {
-        return history
-      }
-      appActions.populateHistory()
-    }
-    return null
-  }
-
   render () {
     const comparatorByKeyAsc = (a, b) => a.get('key') > b.get('key')
       ? 1 : b.get('key') > a.get('key') ? -1 : 0
@@ -867,22 +798,18 @@ class Main extends ImmutableComponent {
     const nonPinnedFrames = this.props.windowState.get('frames').filter((frame) => !frame.get('pinnedLocation'))
     const tabsPerPage = Number(getSetting(settings.TABS_PER_PAGE))
     const showBookmarksToolbar = getSetting(settings.SHOW_BOOKMARKS_TOOLBAR)
-    const btbMode = getSetting(settings.BOOKMARKS_TOOLBAR_MODE)
-    const showFavicon = (btbMode === bookmarksToolbarMode.TEXT_AND_FAVICONS || btbMode === bookmarksToolbarMode.FAVICONS_ONLY)
-    const showOnlyFavicon = btbMode === bookmarksToolbarMode.FAVICONS_ONLY
+    const showFavicon = getSetting(settings.SHOW_BOOKMARKS_TOOLBAR_FAVICON)
+    const showOnlyFavicon = getSetting(settings.SHOW_BOOKMARKS_TOOLBAR_ONLY_FAVICON)
     const siteInfoIsVisible = this.props.windowState.getIn(['ui', 'siteInfo', 'isVisible'])
     const braveShieldsDisabled = this.braveShieldsDisabled
     const braveryPanelIsVisible = !braveShieldsDisabled && this.props.windowState.get('braveryPanelDetail')
     const clearBrowsingDataPanelIsVisible = this.props.windowState.get('clearBrowsingDataDetail')
     const importBrowserDataPanelIsVisible = this.props.windowState.get('importBrowserDataDetail')
-    const widevinePanelIsVisible = this.props.windowState.getIn(['widevinePanelDetail', 'shown'])
     const autofillAddressPanelIsVisible = this.props.windowState.get('autofillAddressDetail')
     const autofillCreditCardPanelIsVisible = this.props.windowState.get('autofillCreditCardDetail')
     const activeRequestedLocation = this.activeRequestedLocation
     const noScriptIsVisible = this.props.windowState.getIn(['ui', 'noScriptInfo', 'isVisible'])
     const releaseNotesIsVisible = this.props.windowState.getIn(['ui', 'releaseNotes', 'isVisible'])
-    const checkDefaultBrowserDialogIsVisible =
-      currentWindow.isFocused() && defaultBrowserState.shouldDisplayDialog(this.props.appState)
     const braverySettings = siteSettings.activeSettings(activeSiteSettings, this.props.appState, appConfig)
     const loginRequiredDetail = activeFrame ? basicAuthState.getLoginRequiredDetail(this.props.appState, activeFrame.get('tabId')) : null
     const customTitlebar = this.customTitlebar
@@ -892,21 +819,16 @@ class Main extends ImmutableComponent {
       !braveryPanelIsVisible &&
       !clearBrowsingDataPanelIsVisible &&
       !importBrowserDataPanelIsVisible &&
-      !widevinePanelIsVisible &&
       !autofillAddressPanelIsVisible &&
       !autofillCreditCardPanelIsVisible &&
       !releaseNotesIsVisible &&
-      !checkDefaultBrowserDialogIsVisible &&
       !noScriptIsVisible &&
       activeFrame && !activeFrame.getIn(['security', 'loginRequiredDetail']) &&
       !customTitlebar.menubarSelectedIndex
 
-    const appStateSites = this.props.appState.get('sites')
-
     return <div id='window'
       className={cx({
         isFullScreen: activeFrame && activeFrame.get('isFullScreen'),
-        isMaximized: customTitlebar.isMaximized,
         frameless: customTitlebar.captionButtonsVisible
       })}
       ref={(node) => { this.mainWindow = node }}
@@ -941,7 +863,6 @@ class Main extends ImmutableComponent {
                     contextMenuDetail={this.props.windowState.get('contextMenuDetail')}
                     autohide={getSetting(settings.AUTO_HIDE_MENU)}
                     lastFocusedSelector={customTitlebar.lastFocusedSelector} />
-                  <WindowCaptionButtons windowMaximized={customTitlebar.isMaximized} />
                 </div>
                 : null
             }
@@ -950,38 +871,26 @@ class Main extends ImmutableComponent {
               onDragOver={this.onDragOver}
               onDrop={this.onDrop}>
               <div className='backforward'>
-                <div className={cx({
-                  navigationButtonContainer: true,
-                  nav: true,
-                  disabled: !activeFrame || !activeFrame.get('canGoBack')
-                })}>
-                  <LongPressButton
-                    l10nId='backButton'
-                    className='navigationButton backButton'
-                    disabled={!activeFrame || !activeFrame.get('canGoBack')}
-                    onClick={this.onBack}
-                    onLongPress={this.onBackLongPress}
-                  />
-                </div>
-                <div className={cx({
-                  navigationButtonContainer: true,
-                  nav: true,
-                  disabled: !activeFrame || !activeFrame.get('canGoForward')
-                })}>
-                  <LongPressButton
-                    l10nId='forwardButton'
-                    className='navigationButton forwardButton'
-                    disabled={!activeFrame || !activeFrame.get('canGoForward')}
-                    onClick={this.onForward}
-                    onLongPress={this.onForwardLongPress}
-                  />
-                </div>
+                <LongPressButton
+                  l10nId='backButton'
+                  className='back fa fa-angle-left'
+                  disabled={!activeFrame || !activeFrame.get('canGoBack')}
+                  onClick={this.onBack}
+                  onLongPress={this.onBackLongPress}
+                />
+                <LongPressButton
+                  l10nId='forwardButton'
+                  className='forward fa fa-angle-right'
+                  disabled={!activeFrame || !activeFrame.get('canGoForward')}
+                  onClick={this.onForward}
+                  onLongPress={this.onForwardLongPress}
+                />
               </div>
               <NavigationBar
                 ref={(node) => { this.navBar = node }}
                 navbar={activeFrame && activeFrame.get('navbar')}
                 frames={this.props.windowState.get('frames')}
-                sites={appStateSites}
+                sites={this.props.appState.get('sites')}
                 activeFrameKey={activeFrame && activeFrame.get('key') || undefined}
                 location={activeFrame && activeFrame.get('location') || ''}
                 title={activeFrame && activeFrame.get('title') || ''}
@@ -989,13 +898,11 @@ class Main extends ImmutableComponent {
                 partitionNumber={activeFrame && activeFrame.get('partitionNumber') || 0}
                 history={activeFrame && activeFrame.get('history') || emptyList}
                 suggestionIndex={activeFrame && activeFrame.getIn(['navbar', 'urlbar', 'suggestions', 'selectedIndex']) || 0}
-                isSecure={activeFrame && activeFrame.getIn(['security', 'isSecure']) &&
-                 !activeFrame.getIn(['security', 'runInsecureContent'])}
+                isSecure={activeFrame && activeFrame.getIn(['security', 'isSecure'])}
                 locationValueSuffix={activeFrame && activeFrame.getIn(['navbar', 'urlbar', 'suggestions', 'urlSuffix']) || ''}
                 startLoadTime={activeFrame && activeFrame.get('startLoadTime') || undefined}
                 endLoadTime={activeFrame && activeFrame.get('endLoadTime') || undefined}
                 loading={activeFrame && activeFrame.get('loading')}
-                bookmarkDetail={this.props.windowState.get('bookmarkDetail')}
                 mouseInTitlebar={this.props.windowState.getIn(['ui', 'mouseInTitlebar'])}
                 searchDetail={this.props.windowState.get('searchDetail')}
                 enableNoScript={this.enableNoScript(activeSiteSettings)}
@@ -1005,7 +912,7 @@ class Main extends ImmutableComponent {
               />
               <div className='topLevelEndButtons'>
                 <div className={cx({
-                  extraDragArea: !customTitlebar.menubarVisible,
+                  extraDragArea: true,
                   allowDragging: shouldAllowWindowDrag
                 })} />
                 {
@@ -1016,21 +923,15 @@ class Main extends ImmutableComponent {
                   className={cx({
                     navbutton: true,
                     braveShieldsDisabled,
-                    braveShieldsDown: !braverySettings.shieldsUp,
-                    leftOfCaptionButton: customTitlebar.captionButtonsVisible && !customTitlebar.menubarVisible
+                    braveShieldsDown: !braverySettings.shieldsUp
                   })}
                   onClick={this.onBraveMenu} />
-                {
-                  customTitlebar.captionButtonsVisible && !customTitlebar.menubarVisible
-                  ? <span className='buttonSeparator' />
-                  : null
-                }
               </div>
             </div>
           </div>
           {
-            customTitlebar.captionButtonsVisible && !customTitlebar.menubarVisible
-              ? <WindowCaptionButtons windowMaximized={customTitlebar.isMaximized} verticallyCenter='true' />
+            customTitlebar.captionButtonsVisible
+              ? <WindowCaptionButtons windowMaximized={customTitlebar.isMaximized} />
               : null
           }
         </div>
@@ -1066,14 +967,6 @@ class Main extends ImmutableComponent {
           : null
         }
         {
-          widevinePanelIsVisible
-          ? <WidevinePanel
-            widevinePanelDetail={this.props.windowState.get('widevinePanelDetail')}
-            widevineReady={this.props.appState.getIn([appConfig.resourceNames.WIDEVINE, 'ready'])}
-            onHide={this.onHideWidevinePanel} />
-          : null
-        }
-        {
          autofillAddressPanelIsVisible
           ? <AutofillAddressPanel
             currentDetail={this.props.windowState.getIn(['autofillAddressDetail', 'currentDetail'])}
@@ -1095,13 +988,11 @@ class Main extends ImmutableComponent {
             : null
         }
         {
-          this.props.windowState.get('bookmarkDetail') && !this.props.windowState.getIn(['bookmarkDetail', 'isBookmarkHanger'])
-          ? <AddEditBookmark
-            sites={appStateSites}
+          this.props.windowState.get('bookmarkDetail')
+          ? <AddEditBookmark sites={this.props.appState.get('sites')}
             currentDetail={this.props.windowState.getIn(['bookmarkDetail', 'currentDetail'])}
             originalDetail={this.props.windowState.getIn(['bookmarkDetail', 'originalDetail'])}
-            destinationDetail={this.props.windowState.getIn(['bookmarkDetail', 'destinationDetail'])}
-            shouldShowLocation={this.props.windowState.getIn(['bookmarkDetail', 'shouldShowLocation'])} />
+            destinationDetail={this.props.windowState.getIn(['bookmarkDetail', 'destinationDetail'])} />
           : null
         }
         {
@@ -1117,17 +1008,6 @@ class Main extends ImmutableComponent {
             metadata={this.props.appState.getIn(['updates', 'metadata'])}
             onHide={this.onHideReleaseNotes} />
           : null
-        }
-        {
-          checkDefaultBrowserDialogIsVisible
-            ? <CheckDefaultBrowserDialog
-              checkDefaultOnStartup={
-                this.props.windowState.getIn(['modalDialogDetail', 'checkDefaultBrowserDialog']) === undefined
-                ? getSetting(settings.CHECK_DEFAULT_ON_STARTUP)
-                : this.props.windowState.getIn(['modalDialogDetail', 'checkDefaultBrowserDialog', 'checkDefaultOnStartup'])
-              }
-              onHide={this.onHideCheckDefaultBrowserDialog} />
-            : null
         }
 
         <UpdateBar updates={this.props.appState.get('updates')} />
@@ -1147,8 +1027,7 @@ class Main extends ImmutableComponent {
             activeFrameKey={activeFrame && activeFrame.get('key') || undefined}
             windowWidth={window.innerWidth}
             contextMenuDetail={this.props.windowState.get('contextMenuDetail')}
-            sites={appStateSites}
-            selectedFolderId={this.props.windowState.getIn(['ui', 'bookmarksToolbar', 'selectedFolderId'])} />
+            sites={this.props.appState.get('sites')} />
           : null
         }
         <div className={cx({
@@ -1175,7 +1054,7 @@ class Main extends ImmutableComponent {
           tabPageIndex={this.props.windowState.getIn(['ui', 'tabs', 'tabPageIndex'])}
           previewTabPageIndex={this.props.windowState.getIn(['ui', 'tabs', 'previewTabPageIndex'])}
           tabs={this.props.windowState.get('tabs')}
-          sites={appStateSites}
+          sites={this.props.appState.get('sites')}
           key='tab-bar'
           activeFrameKey={activeFrame && activeFrame.get('key') || undefined}
           onMenu={this.onHamburgerMenu}
@@ -1202,7 +1081,6 @@ class Main extends ImmutableComponent {
             sortedFrames.map((frame) =>
               <Frame
                 ref={(node) => { this.frames[frame.get('key')] = node }}
-                tabIndex={FrameStateUtil.getFrameIndex(this.props.windowState, frame.get('key'))}
                 prefOpenInForeground={getSetting(settings.SWITCH_TO_NEW_TABS)}
                 onCloseFrame={this.onCloseFrame}
                 frameKey={frame.get('key')}
@@ -1211,25 +1089,23 @@ class Main extends ImmutableComponent {
                   ? this.props.appState.get('settings') || emptyMap
                   : null}
                 bookmarks={frame.get('location') === 'about:bookmarks'
-                  ? appStateSites
+                  ? this.props.appState.get('sites')
                       .filter((site) => site.get('tags')
                         .includes(siteTags.BOOKMARK)) || emptyMap
                   : null}
-                history={this.bindHistory(frame)}
+                history={frame.get('location') === 'about:history'
+                  ? this.props.appState.get('sites') || emptyMap
+                  : null}
                 extensions={frame.get('location') === 'about:extensions'
                   ? this.props.appState.get('extensions') || emptyMap
                   : null}
-                preferencesData={frame.get('location') === 'about:preferences#payments'
-                  ? this.props.appState.getIn(['ui', 'about', 'preferences']) || emptyMap
-                  : null}
                 downloads={this.props.appState.get('downloads') || emptyMap}
                 bookmarkFolders={frame.get('location') === 'about:bookmarks'
-                  ? appStateSites
+                  ? this.props.appState.get('sites')
                       .filter((site) => site.get('tags')
                         .includes(siteTags.BOOKMARK_FOLDER)) || emptyMap
                   : null}
                 isFullScreen={frame.get('isFullScreen')}
-                isSecure={frame.getIn(['security', 'isSecure'])}
                 showFullScreenWarning={frame.get('showFullScreenWarning')}
                 findbarShown={frame.get('findbarShown')}
                 findDetail={frame.get('findDetail')}
@@ -1256,13 +1132,12 @@ class Main extends ImmutableComponent {
                 adInsertion={this.props.appState.get('adInsertion')}
                 noScript={this.props.appState.get('noScript')}
                 flash={this.props.appState.get('flash')}
-                widevine={this.props.appState.get('widevine')}
                 cookieblock={this.props.appState.get('cookieblock')}
+                flashInitialized={this.props.appState.get('flashInitialized')}
                 allSiteSettings={allSiteSettings}
                 ledgerInfo={this.props.appState.get('ledgerInfo') || new Immutable.Map()}
                 publisherInfo={this.props.appState.get('publisherInfo') || new Immutable.Map()}
                 frameSiteSettings={this.frameSiteSettings(frame.get('location'))}
-                onFindHide={this.onFindHide}
                 enableNoScript={this.enableNoScript(this.frameSiteSettings(frame.get('location')))}
                 isPreview={frame.get('key') === this.props.windowState.get('previewFrameKey')}
                 isActive={FrameStateUtil.isFrameKeyActive(this.props.windowState, frame.get('key'))}
@@ -1271,7 +1146,6 @@ class Main extends ImmutableComponent {
                 adblockCount={this.props.appState.getIn(['adblock', 'count'])}
                 trackedBlockersCount={this.props.appState.getIn(['trackingProtection', 'count'])}
                 httpsUpgradedCount={this.props.appState.getIn(['httpsEverywhere', 'count'])}
-                newTabDetail={frame.get('location') === 'about:newtab' ? this.props.appState.getIn(['about', 'newtab']) : null}
               />)
           }
         </div>

@@ -12,7 +12,7 @@ const aboutActions = require('./aboutActions')
 const ImmutableComponent = require('../components/immutableComponent')
 const SwitchControl = require('../components/switchControl')
 
-const ipc = window.chrome.ipcRenderer
+const ipc = window.chrome.ipc
 
 // Stylesheets
 require('../../less/switchControls.less')
@@ -95,8 +95,7 @@ class AboutAdBlock extends React.Component {
               value={getSetting(ADBLOCK_CUSTOM_RULES, this.state.settings) || ''}
               className='customFiltersInput'
               cols='100'
-              rows='10'
-              spellCheck='false' />
+              rows='10' />
           </div>
         </div>
       </list>

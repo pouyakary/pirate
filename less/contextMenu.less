@@ -4,10 +4,6 @@
 
 @import "variables.less";
 
-:root {
-  --context-menu-single-max-width: 400px;
-}
-
 .contextMenu {
   border-radius: @borderRadius;
   box-sizing: border-box;
@@ -40,7 +36,7 @@
     box-sizing: border-box;
     display: table;
     min-width: 220px;
-    max-width: var(--context-menu-single-max-width);
+    max-width: 400px;
 
     &.isSubmenu {
       position: relative;

@@ -61,14 +61,14 @@ if (isDarwin) {
   // need to store the output files in separate directories
   outDir = path.join(outDir, arch)
 
-  var muonInstaller = require('electron-winstaller')
-  var resultPromise = muonInstaller.createWindowsInstaller({
+  var electronInstaller = require('electron-winstaller')
+  var resultPromise = electronInstaller.createWindowsInstaller({
     appDirectory: buildDir,
     outputDirectory: outDir,
     title: 'Brave',
     authors: 'Brave Software',
     loadingGif: 'res/brave_splash_installing.gif',
-    setupIcon: 'res/brave_installer.ico',
+    setupIcon: 'res/app.ico',
     iconUrl: 'https://brave.com/favicon.ico',
     signWithParams: format('-a -fd sha256 -f "%s" -p "%s" -t http://timestamp.verisign.com/scripts/timstamp.dll', path.resolve(cert), certPassword),
     exe: 'Brave.exe'
@@ -82,7 +82,7 @@ if (isDarwin) {
   }, (e) => console.log(`No dice: ${e.message}`))
 } else if (isLinux) {
   console.log('Install with sudo dpkg -i dist/brave_' + VersionInfo.braveVersion + '_amd64.deb')
-  console.log('Or install with sudo dnf install dist/brave_' + VersionInfo.braveVersion + '.x86_64.rpm')
+  console.log('Or install with sudo rpm -i dist/brave_' + VersionInfo.braveVersion + '.amd64.rpm')
   cmds = [
     // .deb file
     'electron-installer-debian' +
@@ -94,7 +94,7 @@ if (isDarwin) {
     'electron-installer-redhat' +
       ' --src Brave-linux-x64/' +
       ' --dest dist/' +
-      ' --arch x86_64' +
+      ' --arch amd64' +
       ' --config res/linuxPackaging.json',
     // .tar.bz2 file
     'tar -jcvf dist/Brave.tar.bz2 ./Brave-linux-x64'

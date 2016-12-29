@@ -5,23 +5,20 @@
 const React = require('react')
 const ImmutableComponent = require('./immutableComponent')
 const Immutable = require('immutable')
-const keyCodes = require('../../app/common/constants/keyCodes')
+const keyCodes = require('../constants/keyCodes')
 const Button = require('./button')
 const SwitchControl = require('../components/switchControl')
 const windowActions = require('../actions/windowActions')
 const windowStore = require('../stores/windowStore')
-const contextMenus = require('../contextMenus')
 const {getTextColorForBackground} = require('../lib/color')
 
 class FindBar extends ImmutableComponent {
   constructor () {
     super()
     this.onBlur = this.onBlur.bind(this)
-    this.onInputFocus = this.onInputFocus.bind(this)
     this.onClear = this.onClear.bind(this)
     this.onKeyDown = this.onKeyDown.bind(this)
-    this.onContextMenu = this.onContextMenu.bind(this)
-    this.onInput = this.onInput.bind(this)
+    this.onChange = this.onChange.bind(this)
     this.onFindPrev = this.onFindPrev.bind(this)
     this.onFindNext = this.onFindNext.bind(this)
     this.onCaseSensitivityChange = this.onCaseSensitivityChange.bind(this)
@@ -32,7 +29,7 @@ class FindBar extends ImmutableComponent {
     return windowStore.getFrame(this.props.frameKey)
   }
 
-  onInput (e) {
+  onChange (e) {
     windowActions.setFindDetail(this.frame, Immutable.fromJS({
       searchString: e.target.value,
       caseSensitivity: this.isCaseSensitive
@@ -58,46 +55,26 @@ class FindBar extends ImmutableComponent {
     this.props.onFind(this.searchString, this.isCaseSensitive, false, this.props.findDetail.get('internalFindStatePresent'))
   }
 
-  onContextMenu (e) {
-    // Without this timeout selection is not shown when right clicking in
-    // a word so the word replacement is kind of a surprise.  This is because
-    // our context menus are modal at the moment.  If we fix that we can
-    // remove this timeout.
-    setTimeout(() =>
-      contextMenus.onFindBarContextMenu(e), 10)
-  }
-
   /**
    * Focus the find in page input and select the text
    */
   focus () {
-    this.searchInput.focus()
-  }
-
-  select () {
-    this.searchInput.select()
+    const input = this.searchInput
+    input.focus()
+    input.select()
   }
 
   componentDidMount () {
-    this.searchInput.value = this.searchString
     this.focus()
-    this.select()
-    windowActions.setFindbarSelected(this.frame, false)
   }
 
   componentWillUpdate (nextProps) {
-    if (nextProps.frameKey !== this.props.frameKey) {
-      this.searchInput.value = nextProps.findDetail && nextProps.findDetail.get('searchString') || ''
-    }
+    this.didFrameChange = nextProps.frameKey !== this.props.frameKey
   }
 
   componentDidUpdate (prevProps) {
-    if (this.props.selected && !prevProps.selected) {
+    if (this.props.selected) {
       this.focus()
-      // Findbar might already be focused, so make sure select happens even if no
-      // onFocus event happens.
-      this.select()
-      windowActions.setFindbarSelected(this.frame, false)
     }
     if (!this.props.findDetail || !prevProps.findDetail ||
         this.props.findDetail.get('searchString') !== prevProps.findDetail.get('searchString') ||
@@ -124,16 +101,11 @@ class FindBar extends ImmutableComponent {
     }
   }
 
-  onInputFocus () {
-    this.select()
-  }
-
   onBlur (e) {
     windowActions.setFindbarSelected(this.frame, false)
   }
 
   onClear () {
-    this.searchInput.value = ''
     windowActions.setFindDetail(this.frame, Immutable.fromJS({
       searchString: '',
       caseSensitivity: this.isCaseSensitive
@@ -199,17 +171,17 @@ class FindBar extends ImmutableComponent {
 
     const backgroundColor = this.backgroundColor
     let findBarStyle = {}
-    let findBarTextStyle = {}
 
     if (backgroundColor) {
       findBarStyle = {
         background: backgroundColor,
         color: this.textColor
       }
-      findBarTextStyle = {
-        color: this.textColor
-      }
     }
+
+    const inputValue = this.didFrameChange
+      ? this.searchString || undefined
+      : undefined
 
     return <div className='findBar' style={findBarStyle} onBlur={this.onBlur}>
       <div className='searchContainer'>
@@ -217,12 +189,11 @@ class FindBar extends ImmutableComponent {
           <span className='searchStringContainerIcon fa fa-search' />
           <input type='text'
             spellCheck='false'
-            onContextMenu={this.onContextMenu}
             ref={(node) => { this.searchInput = node }}
-            onFocus={this.onInputFocus}
+            value={inputValue}
             onKeyDown={this.onKeyDown}
-            onInput={this.onInput} />
-          <span className='searchStringContainerIcon fa fa-times findClear'
+            onKeyUp={this.onChange} />
+          <span className='searchStringContainerIcon fa fa-times'
             onClick={this.onClear} />
         </div>
         <span className='findMatchText'>{findMatchText}</span>
@@ -240,10 +211,10 @@ class FindBar extends ImmutableComponent {
           id='caseSensitivityCheckbox'
           checkedOn={this.isCaseSensitive}
           onClick={this.onCaseSensitivityChange} />
-        <label htmlFor='caseSensitivityCheckbox' data-l10n-id='caseSensitivity' style={findBarTextStyle} />
+        <label htmlFor='caseSensitivityCheckbox' data-l10n-id='caseSensitivity' style={findBarStyle} />
       </div>
       <span className='findButton closeButton'
-        style={findBarTextStyle}
+        style={findBarStyle}
         onClick={this.props.onFindHide}>+</span>
     </div>
   }

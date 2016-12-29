@@ -9,7 +9,7 @@ const Button = require('./button')
 const SwitchControl = require('./switchControl')
 const windowActions = require('../actions/windowActions')
 const appActions = require('../actions/appActions')
-const ipc = require('electron').ipcRenderer
+const ipc = global.require('electron').ipcRenderer
 const messages = require('../constants/messages')
 
 class ClearBrowsingDataPanel extends ImmutableComponent {
@@ -52,7 +52,7 @@ class ClearBrowsingDataPanel extends ImmutableComponent {
           <SwitchControl className='siteSettingsSwitch' rightl10nId='savedSiteSettings' checkedOn={this.props.clearBrowsingDataDetail.get('savedSiteSettings')} onClick={this.onToggleSavedSiteSettings} />
         </div>
         <div className='formSection clearBrowsingDataButtons'>
-          <Button l10nId='cancel' className='whiteButton' onClick={this.props.onHide} />
+          <Button l10nId='cancel' className='secondaryAltButton' onClick={this.props.onHide} />
           <Button l10nId='clear' className='primaryButton clearDataButton' onClick={this.onClear} />
         </div>
         <div className='formSection clearBrowsingDataWarning'>

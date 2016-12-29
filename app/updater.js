@@ -27,9 +27,7 @@ const os = require('os')
 // in prod mode we pipe to a file
 var debug = function (contents) {
   const updateLogPath = path.join(app.getPath('userData'), 'updateLog.log')
-  fs.appendFile(updateLogPath, new Date().toISOString() + ' - ' + contents + os.EOL, (err) => {
-    if (err) console.log(err)
-  })
+  fs.appendFile(updateLogPath, new Date().toISOString() + ' - ' + contents + os.EOL)
 }
 
 // this maps the result of a call to process.platform to an update API identifier

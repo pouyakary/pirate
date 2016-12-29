@@ -4,17 +4,19 @@
 
 'use strict'
 
+const os = require('os')
+
 /**
  * Get list of styles which should be applied to root window div
  * return array of strings (each being a class name)
  */
 module.exports.getPlatformStyles = () => {
-  const platform = process.platform
+  const platform = os.platform()
   const styleList = ['platform--' + platform]
 
   switch (platform) {
     case 'win32':
-      if (process.platformVersion === 'win7') {
+      if (/6.1./.test(os.release())) {
         styleList.push('win7')
       } else {
         styleList.push('win10')
@@ -24,21 +26,10 @@ module.exports.getPlatformStyles = () => {
   return styleList
 }
 
-module.exports.getPathFromFileURI = (fileURI) => {
-  const path = decodeURI(fileURI)
-  if (process.platform === 'win32') {
-    return path.replace('file:///', '')
-  } else {
-    return path.replace('file://', '')
-  }
-}
-
 module.exports.isDarwin = () => {
-  return process.platform === 'darwin' ||
-    navigator.platform === 'MacIntel'
+  return os.platform() === 'darwin'
 }
 
 module.exports.isWindows = () => {
-  return process.platform === 'win32' ||
-    navigator.platform === 'Win32'
+  return os.platform() === 'win32'
 }

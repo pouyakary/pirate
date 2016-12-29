@@ -3,8 +3,10 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 let registeredCallbacks = []
-let registeredSessions = {}
-let registeredPrivateSessions = {}
+let registeredSessions = []
+let registeredPrivateSessions = []
+
+const isPrivate = (partition) => !partition.startsWith('persist:') && partition !== 'main-1'
 
 // TODO(bridiver) move this to electron so we can call a simpler api
 const setUserPrefType = (ses, path, value) => {
@@ -33,38 +35,41 @@ const setUserPrefType = (ses, path, value) => {
   }
 }
 
-const runCallback = (cb, incognito) => {
-  let prefs = cb(incognito)
+const runCallback = (cb, name, incognito) => {
+  let prefs = cb()
 
   if (typeof prefs !== 'object') {
     console.warn('userPrefs callback did not return an object:', prefs)
     return
   }
 
-  for (let name in prefs) {
-    module.exports.setUserPref(name, prefs[name], incognito)
+  if (name) {
+    if (prefs[name]) {
+      module.exports.setUserPref(name, prefs[name], incognito)
+      return true
+    }
+    return false
   }
 
+  for (name in prefs) {
+    module.exports.setUserPref(name, prefs[name], incognito)
+  }
   return true
 }
 
 module.exports.setUserPref = (path, value, incognito = false) => {
-  value = value.toJS ? value.toJS() : value
-
-  const partitions = incognito ? registeredPrivateSessions : registeredSessions
-  for (let partition in partitions) {
-    const ses = partitions[partition]
-    setUserPrefType(ses, path, value)
-    ses.webRequest.handleBehaviorChanged()
-  }
+  let partitions = incognito ? Object.keys(registeredPrivateSessions) : Object.keys(registeredSessions)
+  partitions.forEach((partition) => {
+    setUserPrefType(registeredSessions[partition], path, value)
+  })
 }
 
-module.exports.init = (ses, partition, isPrivate) => {
-  if (isPrivate) {
+module.exports.init = (ses, partition) => {
+  if (isPrivate(partition)) {
     registeredPrivateSessions[partition] = ses
   }
   registeredSessions[partition] = ses
-  registeredCallbacks.forEach((fn) => fn(isPrivate))
+  registeredCallbacks.forEach((fn) => fn())
 }
 
 module.exports.registerUserPrefs = (cb) => {

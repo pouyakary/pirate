@@ -7,7 +7,7 @@ const messages = require('../constants/messages')
 const Immutable = require('immutable')
 const aboutActions = require('./aboutActions')
 
-const ipc = window.chrome.ipcRenderer
+const ipc = window.chrome.ipc
 
 require('../../less/about/passwords.less')
 require('../../node_modules/font-awesome/css/font-awesome.css')

@@ -4,7 +4,7 @@
 
 const React = require('react')
 const ImmutableComponent = require('../../../js/components/immutableComponent')
-const electron = require('electron')
+const electron = global.require('electron')
 const ipc = electron.ipcRenderer
 const Button = require('../../../js/components/button')
 const cx = require('../../../js/lib/classSet')
@@ -40,7 +40,7 @@ class BrowserActionButton extends ImmutableComponent {
         extensionButton: true
       })}
       inlineStyles={{
-        backgroundImage: extensionState.browserActionBackgroundImage(this.props.browserAction, this.props.tabId),
+        backgroundImage: extensionState.browserActionBackgroundImage(this.props.browserAction),
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center'
       }}

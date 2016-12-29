@@ -19,7 +19,7 @@
   border-top: 1px solid #888;
   color: black;
   display: flex;
-  height: @downloadsBarHeight;
+  height: 50px;
   padding: 5px var(--download-bar-padding);
   width: 100%;
   z-index: @zindexDownloadsBar;
@@ -132,17 +132,7 @@
     margin: auto 0;
 
     .downloadButton {
-      background: url('../img/toolbar/close_download_btn.svg') center no-repeat;
-      background-size: 14px 14px;
-      height: 18px;
-      width: 18px;
-
-      &:hover {
-        background: url('../img/toolbar/close_download_btn_hover.svg') center no-repeat;
-        background-size: 14px 14px;
-        height: 18px;
-        width: 18px;
-      }
+      margin: 0 2px;
 
       &.hideButton:not([disabled]):hover {
         background: @chromeControlsWarningBackground;

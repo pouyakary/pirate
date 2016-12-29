@@ -26,6 +26,7 @@ const expYear = new Date().getFullYear() + 2
 describe('Autofill', function () {
   function * setup (client) {
     yield client
+      .waitUntilWindowLoaded()
       .waitForUrl(Brave.newTabUrl)
       .waitForBrowserWindow()
       .waitForVisible(urlInput)
@@ -435,12 +436,12 @@ describe('Autofill', function () {
         .click('[name="04fullname"]')
         .windowByUrl(Brave.browserWindowUrl)
         .waitForExist('contextMenuItemText', 500, true)
-        .tabByIndex(1)
+        .tabByIndex(0)
         .getValue('[name="04fullname"]').should.eventually.be.equal('')
         .click('[name="41ccnumber"]')
         .click('[name="41ccnumber"]')
         .waitForExist('contextMenuItemText', 500, true)
-        .tabByIndex(1)
+        .tabByIndex(0)
         .getValue('[name="41ccnumber"]').should.eventually.be.equal('')
     })
   })
@@ -609,7 +610,7 @@ describe('Autofill', function () {
           .click('[name="04fullname"]')
           .windowByUrl(Brave.browserWindowUrl)
           .waitForExist('contextMenuItemText', 500, true)
-          .tabByIndex(1)
+          .tabByIndex(0)
           .getValue('[name="04fullname"]').should.eventually.be.equal('')
       })
     })

@@ -9,9 +9,12 @@ const assert = require('assert')
 describe('tab pages', function () {
   function * setup (client) {
     yield client
+      .waitUntilWindowLoaded()
       .waitForUrl(Brave.newTabUrl)
       .waitForBrowserWindow()
       .waitForVisible(urlInput)
+      .waitForUrl(Brave.newTabUrl)
+      .windowByUrl(Brave.browserWindowUrl)
   }
 
   describe('basic tab page functionality', function () {
@@ -23,9 +26,8 @@ describe('tab pages', function () {
         assert.equal(0, res.value.length)
       })
       // Create a full tab set, but not a second page
-      yield this.app.client.windowByUrl(Brave.browserWindowUrl)
       for (let i = 0; i < appConfig.defaultSettings[settings.TABS_PER_PAGE] - 1; i++) {
-        yield this.app.client.click(newFrameButton)
+        yield this.app.client.windowByUrl(Brave.browserWindowUrl).click(newFrameButton)
       }
     })
 
@@ -86,13 +88,8 @@ describe('tab pages', function () {
       yield setup(this.app.client)
       yield this.app.client.changeSetting(settings.TABS_PER_PAGE, appConfig.defaultSettings[settings.TABS_PER_PAGE])
       // Make sure there are 2 tab pages
-      yield this.app.client.windowByUrl(Brave.browserWindowUrl)
-      const tabsPerPage = appConfig.defaultSettings[settings.TABS_PER_PAGE]
-      for (let i = 0; i < tabsPerPage; i++) {
-        yield this.app.client
-          .waitForExist(newFrameButton)
-          .click(newFrameButton)
-          .elements(tabPage).then((res) => res.value.length === (i + 2) % tabsPerPage)
+      for (let i = 0; i < appConfig.defaultSettings[settings.TABS_PER_PAGE]; i++) {
+        yield this.app.client.windowByUrl(Brave.browserWindowUrl).click(newFrameButton)
       }
 
       yield this.app.client

@@ -6,9 +6,9 @@ const {activeWebview, notificationBar, titleBar, urlInput} = require('../lib/sel
 describe('notificationBar', function () {
   function * setup (client) {
     yield client
+      .waitUntilWindowLoaded()
       .waitForBrowserWindow()
       .waitForVisible(urlInput)
-      .changeSetting('general.disable-title-mode', false)
   }
 
   Brave.beforeAll(this)
@@ -85,7 +85,7 @@ describe('notificationBar', function () {
       })
     yield this.app.client
       .tabByIndex(0)
-      .loadUrl(Brave.server.url('page1.html'))
+      .loadUrl(Brave.newTabUrl)
     yield this.app.client
       .loadUrl(this.notificationUrl)
       .windowByUrl(Brave.browserWindowUrl)
@@ -165,9 +165,9 @@ describe('notificationBar', function () {
 describe('permissions state', function () {
   function * setup (client) {
     yield client
+      .waitUntilWindowLoaded()
       .waitForBrowserWindow()
       .waitForVisible(urlInput)
-      .changeSetting('general.disable-title-mode', false)
   }
 
   Brave.beforeAll(this)

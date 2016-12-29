@@ -49,16 +49,12 @@ class WindowCaptionButtons extends ImmutableComponent {
   }
 
   render () {
-    const props = { tabIndex: -1 }
-
     return <div className={cx({
       fullscreen: this.props.windowMaximized,
-      windowCaptionButtons: true,
-      verticallyCenter: this.props.verticallyCenter
+      windowCaptionButtons: true
     })}>
       <div className='container'>
         <button
-          {...props}
           className={cx({
             fullscreen: this.props.windowMaximized,
             captionButton: true,
@@ -69,7 +65,6 @@ class WindowCaptionButtons extends ImmutableComponent {
           <div className='widget' />
         </button>
         <button
-          {...props}
           className={cx({
             fullscreen: this.props.windowMaximized,
             captionButton: true,
@@ -84,7 +79,6 @@ class WindowCaptionButtons extends ImmutableComponent {
           </div>
         </button>
         <button
-          {...props}
           className={cx({
             fullscreen: this.props.windowMaximized,
             captionButton: true,

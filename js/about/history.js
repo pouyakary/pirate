@@ -13,29 +13,29 @@ const aboutActions = require('./aboutActions')
 const getSetting = require('../settings').getSetting
 const SortableTable = require('../components/sortableTable')
 const Button = require('../components/button')
-const {makeImmutable} = require('../../app/common/state/immutableUtil')
-const historyUtil = require('../../app/common/lib/historyUtil')
+const siteUtil = require('../state/siteUtil')
 
-const ipc = window.chrome.ipcRenderer
+const ipc = window.chrome.ipc
 
 // Stylesheets
+require('../../less/about/itemList.less')
+require('../../less/about/siteDetails.less')
 require('../../less/about/history.less')
 require('../../node_modules/font-awesome/css/font-awesome.css')
 
-// TODO(bsclifton): this button is currently hidden (along with column icon)
-// When ready, this can be shown again (by updating style in history.less)
-// When that happens, be sure to also show the ::before (which has trash can icon)
 class DeleteHistoryEntryButton extends ImmutableComponent {
   constructor () {
     super()
     this.onClick = this.onClick.bind(this)
   }
+
   onClick (e) {
     if (e && e.preventDefault) {
       e.preventDefault()
     }
-    // TODO(bsclifton): delete the selected entry
+    // BSCTODO: ...
   }
+
   render () {
     return <div className='fa fa-times deleteEntry' onClick={this.onClick} />
   }
@@ -56,10 +56,9 @@ class HistoryTimeCell extends ImmutableComponent {
 
 class HistoryDay extends ImmutableComponent {
   navigate (entry) {
-    entry = makeImmutable(entry)
     aboutActions.newFrame({
-      location: entry.get('location'),
-      partitionNumber: entry.get('partitionNumber')
+      location: entry.location,
+      partitionNumber: entry.partitionNumber
     })
   }
   render () {
@@ -79,12 +78,8 @@ class HistoryDay extends ImmutableComponent {
           urlutils.getHostname(entry.get('location'), true)
         ])}
         rowObjects={this.props.entries}
-        totalRowObjects={this.props.totalEntries.toJS()}
-        tableID={this.props.tableID}
         columnClassNames={['time', 'title', 'domain']}
         addHoverClass
-        multiSelect
-        stateOwner={this.props.stateOwner}
         onDoubleClick={this.navigate}
         contextMenuName='history'
         onContextMenu={aboutActions.contextMenu} />
@@ -92,23 +87,43 @@ class HistoryDay extends ImmutableComponent {
   }
 }
 
-class GroupedHistoryList extends React.Component {
+class GroupedHistoryList extends ImmutableComponent {
+  getDayString (locale, item) {
+    const lastAccessedTime = item.get('lastAccessedTime')
+    return lastAccessedTime
+      ? new Date(lastAccessedTime).toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      : ''
+  }
+  groupEntriesByDay (locale) {
+    const reduced = this.props.history.reduce((previousValue, currentValue, currentIndex, array) => {
+      const result = currentIndex === 1 ? [] : previousValue
+      if (currentIndex === 1) {
+        const firstDate = this.getDayString(locale, currentValue)
+        result.push({date: firstDate, entries: [previousValue]})
+      }
+      const date = this.getDayString(locale, currentValue)
+      const dateIndex = result.findIndex((entryByDate) => entryByDate.date === date)
+      if (dateIndex !== -1) {
+        result[dateIndex].entries.push(currentValue)
+      } else {
+        result.push({date: date, entries: [currentValue]})
+      }
+      return result
+    })
+    if (reduced) {
+      return Array.isArray(reduced)
+        ? reduced
+        : [{date: this.getDayString(locale, reduced), entries: [reduced]}]
+    }
+    return []
+  }
   render () {
     const defaultLanguage = this.props.languageCodes.find((lang) => lang.includes(navigator.language)) || 'en-US'
-    const userLanguage = getSetting(settings.LANGUAGE, this.props.settings) || defaultLanguage
-    const entriesByDay = historyUtil.groupEntriesByDay(this.props.history, userLanguage)
-    const totalEntries = historyUtil.totalEntries(entriesByDay)
-    let index = 0
+    const userLanguage = getSetting(settings.LANGUAGE, this.props.settings)
     return <list className='historyList'>
       {
-        entriesByDay.map((groupedEntry) =>
-          <HistoryDay
-            date={groupedEntry.get('date')}
-            entries={groupedEntry.get('entries')}
-            totalEntries={totalEntries}
-            tableID={index++}
-            stateOwner={this.props.stateOwner}
-          />)
+        this.groupEntriesByDay(userLanguage || defaultLanguage).map((groupedEntry) =>
+          <HistoryDay date={groupedEntry.date} entries={groupedEntry.entries} />)
       }
     </list>
   }
@@ -120,29 +135,14 @@ class AboutHistory extends React.Component {
     this.onChangeSearch = this.onChangeSearch.bind(this)
     this.onClearSearchText = this.onClearSearchText.bind(this)
     this.clearBrowsingDataNow = this.clearBrowsingDataNow.bind(this)
-    this.clearSelection = this.clearSelection.bind(this)
-    this.onClick = this.onClick.bind(this)
     this.state = {
-      history: Immutable.List(),
+      history: Immutable.Map(),
       search: '',
       settings: Immutable.Map(),
-      languageCodes: Immutable.Map(),
-      selection: Immutable.Set(),
-      updatedStamp: undefined
+      languageCodes: Immutable.Map()
     }
     ipc.on(messages.HISTORY_UPDATED, (e, detail) => {
-      const aboutHistory = Immutable.fromJS(detail || {})
-      const updatedStamp = aboutHistory.get('updatedStamp')
-      // Only update if the data has changed.
-      if (typeof updatedStamp === 'number' &&
-          typeof this.state.updatedStamp === 'number' &&
-          updatedStamp === this.state.updatedStamp) {
-        return
-      }
-      this.setState({
-        history: aboutHistory.get('entries') || new Immutable.List(),
-        updatedStamp: updatedStamp
-      })
+      this.setState({ history: Immutable.fromJS(detail && detail.history || {}) })
     })
     ipc.on(messages.SETTINGS_UPDATED, (e, settings) => {
       this.setState({ settings: Immutable.fromJS(settings || {}) })
@@ -161,42 +161,30 @@ class AboutHistory extends React.Component {
       search: ''
     })
   }
-  onClick (e) {
-    // Determine if click was on sortableTable
-    let targetElement = e.target
-    while (targetElement) {
-      if (targetElement.tagName === 'TBODY' || targetElement.tagName === 'THEAD') {
-        return
-      }
-      targetElement = targetElement.parentNode
-    }
-    // Click was not a child element of sortableTable; clear selection
-    this.clearSelection()
-  }
   searchedSiteDetails (searchTerm, siteDetails) {
     return siteDetails.filter((siteDetail) => {
       const title = siteDetail.get('title') + siteDetail.get('location')
       return title.match(new RegExp(searchTerm, 'gi'))
     })
   }
+  historyDescendingOrder () {
+    return this.state.history.filter((site) => siteUtil.isHistoryEntry(site))
+      .sort((left, right) => {
+        if (left.get('lastAccessedTime') < right.get('lastAccessedTime')) return 1
+        if (left.get('lastAccessedTime') > right.get('lastAccessedTime')) return -1
+        return 0
+      }).slice(-500)
+  }
   clearBrowsingDataNow () {
     aboutActions.clearBrowsingDataNow({browserHistory: true})
   }
-  clearSelection () {
-    this.setState({
-      selection: new Immutable.Set()
-    })
-  }
-  componentDidMount () {
-    this.refs.historySearch.focus()
-  }
   render () {
-    return <div className='siteDetailsPage' onClick={this.onClick}>
+    return <div className='siteDetailsPage'>
       <div className='siteDetailsPageHeader'>
         <div data-l10n-id='history' className='sectionTitle' />
         <div className='headerActions'>
           <div className='searchWrapper'>
-            <input type='text' className='searchInput' ref='historySearch' id='historySearch' value={this.state.search} onChange={this.onChangeSearch} data-l10n-id='historySearch' />
+            <input type='text' className='searchInput' id='historySearch' placeholder='Search' value={this.state.search} onChange={this.onChangeSearch} data-l10n-id='historySearch' />
             {
               this.state.search
               ? <span onClick={this.onClearSearchText} className='fa fa-close searchInputClear' />
@@ -208,15 +196,16 @@ class AboutHistory extends React.Component {
       </div>
 
       <div className='siteDetailsPageContent'>
-        <GroupedHistoryList
-          languageCodes={this.state.languageCodes}
-          settings={this.state.settings}
-          history={
-            this.state.search
-            ? this.searchedSiteDetails(this.state.search, this.state.history)
-            : this.state.history
-          }
-          stateOwner={this} />
+        {
+          <GroupedHistoryList
+            languageCodes={this.state.languageCodes}
+            settings={this.state.settings}
+            history={
+              this.state.search
+              ? this.searchedSiteDetails(this.state.search, this.historyDescendingOrder())
+              : this.historyDescendingOrder()
+            } />
+         }
       </div>
     </div>
   }

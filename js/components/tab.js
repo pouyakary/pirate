@@ -8,7 +8,6 @@ const ImmutableComponent = require('./immutableComponent')
 
 const windowActions = require('../actions/windowActions')
 const dragTypes = require('../constants/dragTypes')
-const messages = require('../constants/messages')
 const cx = require('../lib/classSet')
 const {getTextColorForBackground} = require('../lib/color')
 const {isIntermediateAboutPage} = require('../lib/appUrlUtil')
@@ -16,9 +15,6 @@ const {isIntermediateAboutPage} = require('../lib/appUrlUtil')
 const contextMenus = require('../contextMenus')
 const dnd = require('../dnd')
 const windowStore = require('../stores/windowStore')
-const ipc = require('electron').ipcRenderer
-
-const {TabIcon, AudioTabIcon} = require('../../app/renderer/components/tabIcon')
 
 class Tab extends ImmutableComponent {
   constructor () {
@@ -163,8 +159,6 @@ class Tab extends ImmutableComponent {
     }
 
     const icon = this.props.tab.get('icon')
-    const defaultIcon = 'fa fa-file-o'
-
     if (!this.loading && icon) {
       iconStyle = Object.assign(iconStyle, {
         backgroundImage: `url(${icon})`,
@@ -173,18 +167,18 @@ class Tab extends ImmutableComponent {
       })
     }
 
-    let playIcon = false
-    let iconClass = null
+    let playIcon = null
     if (this.props.tab.get('audioPlaybackActive') || this.props.tab.get('audioMuted')) {
-      if (this.props.tab.get('audioPlaybackActive') && !this.props.tab.get('audioMuted')) {
-        iconClass = 'fa fa-volume-up'
-      } else if (this.props.tab.get('audioPlaybackActive') && this.props.tab.get('audioMuted')) {
-        iconClass = 'fa fa-volume-off'
-      }
-      playIcon = true
+      playIcon = <span className={cx({
+        audioPlaybackActive: true,
+        fa: true,
+        'fa-volume-up': this.props.tab.get('audioPlaybackActive') &&
+          !this.props.tab.get('audioMuted'),
+        'fa-volume-off': this.props.tab.get('audioPlaybackActive') &&
+          this.props.tab.get('audioMuted')
+      })}
+        onClick={this.onMuteFrame.bind(this, !this.props.tab.get('audioMuted'))} />
     }
-
-    const locationHasFavicon = this.props.tab.get('location') !== 'about:newtab' && this.props.tab.get('location') !== 'about:blank'
 
     return <div
       className={cx({
@@ -215,33 +209,22 @@ class Tab extends ImmutableComponent {
         style={activeTabStyle}>
         {
           this.props.tab.get('isPrivate')
-          ? <TabIcon styles='fa fa-eye' />
+          ? <div className='privateIcon fa fa-eye' />
           : null
         }
         {
           this.props.tab.get('partitionNumber')
-          ? <TabIcon l10nArgs={JSON.stringify({partitionNumber: this.props.tab.get('partitionNumber')})}
-            l10nId='sessionInfoTab'
-            styles='fa fa-user' />
+          ? <div data-l10n-args={JSON.stringify({partitionNumber: this.props.tab.get('partitionNumber')})}
+            data-l10n-id='sessionInfoTab'
+            className='privateIcon fa fa-user' />
           : null
         }
-        {
-          locationHasFavicon
-          ? <div className={cx({
-            tabIcon: true,
-            bookmarkFile: !icon,
-            [defaultIcon]: !icon,
-            'fa fa-circle-o-notch fa-spin': this.loading
-          })}
-            style={iconStyle} />
-          : null
-        }
-        {
-          playIcon
-          ? <AudioTabIcon styles={iconClass}
-            onClick={this.onMuteFrame.bind(this, !this.props.tab.get('audioMuted'))} />
-          : null
-        }
+        <div className={cx({
+          tabIcon: true,
+          'fa fa-circle-o-notch fa-spin': this.loading
+        })}
+          style={iconStyle} />
+        {playIcon}
         {
           !this.isPinned
           ? <div className='tabTitle'>
@@ -261,24 +244,4 @@ class Tab extends ImmutableComponent {
   }
 }
 
-const paymentsEnabled = () => {
-  const getSetting = require('../settings').getSetting
-  const settings = require('../constants/settings')
-  return getSetting(settings.PAYMENTS_ENABLED)
-}
-
-windowStore.addChangeListener(() => {
-  if (paymentsEnabled()) {
-    const windowState = windowStore.getState()
-    const tabs = windowState && windowState.get('tabs')
-    if (tabs) {
-      try {
-        const presentP = tabs.some((tab) => {
-          return tab.get('location') === 'about:preferences#payments'
-        })
-        ipc.send(messages.LEDGER_PAYMENTS_PRESENT, presentP)
-      } catch (ex) { }
-    }
-  }
-})
 module.exports = Tab

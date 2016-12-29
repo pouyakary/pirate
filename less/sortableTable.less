@@ -6,7 +6,7 @@
 
 table.sort {
   th {
-    color: @buttonColor;
+    color: @gray;
 
     &:hover {
       color: #000;
@@ -16,7 +16,11 @@ table.sort {
 
 table.sortableTable {
   width: 100%;
+  border: solid 1px @lightGray;
+  border-bottom-left-radius: @borderRadius;
+  border-bottom-right-radius: @borderRadius;
   margin-bottom: 40px;
+  box-shadow: @softBoxShadow;
   cursor: default;
   border-spacing: 0;
 
@@ -91,35 +95,7 @@ table.sortableTable {
       }
     }
   }
-  tr.rowHover:hover {
-    background: @lightGray;
-    &.selected {
-      background: @braveOrange;
-      td {
-        color: white;
-      }
-      div {
-        color: white;
-      }
-    }
-  }
-  tr.selected {
-    background-color: lighten(@gray, 20%);
-    td {
-      color: @buttonColor;
-    }
-    div {
-      color: @buttonColor;
-    }
-  }
-
-  &:not(.sort) {
-    th.sort-up:after {
-      content: '';
-    }
-
-    th.sort-down:after {
-      content: '';
-    }
-  }
+}
+tr.rowHover:hover {
+  background: #ffcc99;
 }

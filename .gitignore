@@ -37,7 +37,6 @@ public/built
 
 # Temp files
 .DS_Store
-.DS-Store
 temp.VisualElementsManifest.xml
 
 # electron-packager output dirs
@@ -52,7 +51,6 @@ win64-dist
 Brave.tar.bz2
 
 app/extensions/brave/gen
-app/extensions/torrent/gen
 *.pfx
 buildConfig.js
 
@@ -64,6 +62,3 @@ httpse.leveldb
 
 # vim swap files
 *.swp
-
-# webstrom
-.idea

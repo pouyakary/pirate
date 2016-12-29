@@ -22,16 +22,9 @@ const settings = require('../js/constants/settings')
 const downloadStates = require('../js/constants/downloadStates')
 const {tabFromFrame} = require('../js/state/frameStateUtil')
 const siteUtil = require('../js/state/siteUtil')
-const { topSites, pinnedTopSites } = require('../js/data/newTabData')
 const sessionStorageVersion = 1
 const filtering = require('./filtering')
-const autofill = require('./autofill')
-const {navigatableTypes} = require('../js/lib/appUrlUtil')
 // const tabState = require('./common/state/tabState')
-const Channel = require('./channel')
-const { makeImmutable } = require('./common/state/immutableUtil')
-const tabState = require('./common/state/tabState')
-const windowState = require('./common/state/windowState')
 
 const getSetting = require('../js/settings').getSetting
 const promisify = require('../js/lib/promisify')
@@ -71,7 +64,7 @@ module.exports.saveAppState = (payload, isShutdown) => {
     }
 
     try {
-      payload = module.exports.cleanAppData(payload, isShutdown)
+      module.exports.cleanAppData(payload, isShutdown)
       payload.cleanedOnShutdown = isShutdown
     } catch (e) {
       payload.cleanedOnShutdown = false
@@ -104,8 +97,6 @@ module.exports.cleanPerWindowData = (perWindowData, isShutdown) => {
   delete perWindowData.contextMenuDetail
   // Don't save preview frame since they are only related to hovering on a tab
   delete perWindowData.previewFrameKey
-  // Don't save widevine panel detail
-  delete perWindowData.widevinePanelDetail
   // Don't save preview tab pages
   if (perWindowData.ui && perWindowData.ui.tabs) {
     delete perWindowData.ui.tabs.previewTabPageIndex
@@ -133,7 +124,6 @@ module.exports.cleanPerWindowData = (perWindowData, isShutdown) => {
     }
     frame.key = newKey
     // Full history is not saved yet
-    // TODO (bsclifton): remove this when https://github.com/brave/browser-laptop/issues/963 is complete
     frame.canGoBack = false
     frame.canGoForward = false
 
@@ -184,7 +174,6 @@ module.exports.cleanPerWindowData = (perWindowData, isShutdown) => {
     if (frame.findDetail) {
       delete frame.findDetail.numberOfMatches
       delete frame.findDetail.activeMatchOrdinal
-      delete frame.findDetail.internalFindStatePresent
     }
     delete frame.findbarShown
     // Don't restore full screen state
@@ -234,40 +223,30 @@ module.exports.cleanPerWindowData = (perWindowData, isShutdown) => {
  * WARNING: getPrefs is only available in this function when isShutdown is true
  */
 module.exports.cleanAppData = (data, isShutdown) => {
-  // make a copy
-  // TODO(bridiver) use immutable
-  data = makeImmutable(data).toJS()
-
+  if (data.settings) {
+    // useragent value gets recalculated on restart
+    data.settings[settings.USERAGENT] = undefined
+  }
   // Don't show notifications from the last session
   data.notifications = []
   // Delete temp site settings
   data.temporarySiteSettings = {}
-
-  if (data.settings[settings.CHECK_DEFAULT_ON_STARTUP] === true) {
-    // Delete defaultBrowserCheckComplete state since this is checked on startup
-    delete data.defaultBrowserCheckComplete
-  }
-  // Delete Recovery status on shut down
-  try {
-    delete data.ui.about.preferences.recoverySucceeded
-  } catch (e) {}
-
+  // Delete Flash state since this is checked on startup
+  delete data.flashInitialized
+  // We used to store a huge list of IDs but we didn't use them.
+  // Get rid of them here.
+  delete data.windows
   if (data.perWindowState) {
     data.perWindowState.forEach((perWindowState) =>
       module.exports.cleanPerWindowData(perWindowState, isShutdown))
   }
   const clearAutocompleteData = isShutdown && getSetting(settings.SHUTDOWN_CLEAR_AUTOCOMPLETE_DATA) === true
   if (clearAutocompleteData) {
-    autofill.clearAutocompleteData()
+    filtering.clearAutocompleteData()
   }
   const clearAutofillData = isShutdown && getSetting(settings.SHUTDOWN_CLEAR_AUTOFILL_DATA) === true
   if (clearAutofillData) {
-    autofill.clearAutofillData()
-    const date = new Date().getTime()
-    data.autofill.addresses.guid = []
-    data.autofill.addresses.timestamp = date
-    data.autofill.creditCards.guid = []
-    data.autofill.creditCards.timestamp = date
+    filtering.clearAutofillData()
   }
   const clearSiteSettings = isShutdown && getSetting(settings.SHUTDOWN_CLEAR_SITE_SETTINGS) === true
   if (clearSiteSettings) {
@@ -317,14 +296,16 @@ module.exports.cleanAppData = (data, isShutdown) => {
       })
     }
   }
-  data = tabState.getPersistentState(data).toJS()
-  data = windowState.getPersistentState(data).toJS()
+  // all data in tabs is transient while we make the transition from window to app state
+  delete data.tabs
+  // if (data.tabs) {
+  //   data.tabs = data.tabs.map((tab) => tabState.getPersistentTabState(tab).toJS())
+  // }
   if (data.extensions) {
     Object.keys(data.extensions).forEach((extensionId) => {
       delete data.extensions[extensionId].tabs
     })
   }
-  return data
 }
 
 /**
@@ -340,52 +321,6 @@ module.exports.cleanSessionDataOnShutdown = () => {
     p = p.then(filtering.clearCache())
   }
   return p
-}
-
-const safeGetVersion = (fieldName, getFieldVersion) => {
-  const versionField = {
-    name: fieldName,
-    version: undefined
-  }
-  try {
-    if (typeof getFieldVersion === 'function') {
-      versionField.version = getFieldVersion()
-      return versionField
-    }
-    console.log('ERROR getting value for field ' + fieldName + ' in sessionStore::setVersionInformation(): ', getFieldVersion, ' is not a function')
-  } catch (e) {
-    console.log('ERROR getting value for field ' + fieldName + ' in sessionStore::setVersionInformation(): ', e)
-  }
-  return versionField
-}
-
-/**
- * version information (shown on about:brave)
- */
-const setVersionInformation = (data) => {
-  const versionFields = [
-    ['Brave', app.getVersion],
-    ['rev', Channel.browserLaptopRev],
-    ['Muon', () => { return process.versions['atom-shell'] }],
-    ['libchromiumcontent', () => { return process.versions['chrome'] }],
-    ['V8', () => { return process.versions.v8 }],
-    ['Node.js', () => { return process.versions.node }],
-    ['Update Channel', Channel.channel],
-    ['os.platform', require('os').platform],
-    ['os.release', require('os').release],
-    ['os.arch', require('os').arch]
-  ]
-  const versionInformation = []
-
-  versionFields.forEach((field) => {
-    versionInformation.push(safeGetVersion(field[0], field[1]))
-  })
-
-  data.about = data.about || {}
-  data.about.brave = {
-    versionInformation: versionInformation
-  }
-  return data
 }
 
 /**
@@ -455,7 +390,7 @@ module.exports.loadAppState = () => {
       }
       // Clean app data here if it wasn't cleared on shutdown
       if (data.cleanedOnShutdown !== true || data.lastAppVersion !== app.getVersion()) {
-        data = module.exports.cleanAppData(data, false)
+        module.exports.cleanAppData(data, false)
       }
       data = Object.assign(module.exports.defaultAppState(), data)
       data.cleanedOnShutdown = false
@@ -474,15 +409,11 @@ module.exports.loadAppState = () => {
           return
         }
       }
-      data = setVersionInformation(data)
     } catch (e) {
       // TODO: Session state is corrupted, maybe we should backup this
       // corrupted value for people to report into support.
-      if (data) {
-        console.log('could not parse data: ', data, e)
-      }
+      console.log('could not parse data: ', data)
       data = exports.defaultAppState()
-      data = setVersionInformation(data)
     }
     locale.init(data.settings[settings.LANGUAGE]).then((locale) => {
       app.setLocale(locale)
@@ -497,9 +428,8 @@ module.exports.loadAppState = () => {
 module.exports.defaultAppState = () => {
   return {
     firstRunTimestamp: new Date().getTime(),
-    sites: topSites,
+    sites: [],
     tabs: [],
-    windows: [],
     extensions: {},
     visits: [],
     settings: {},
@@ -521,25 +451,6 @@ module.exports.defaultAppState = () => {
         timestamp: 0
       }
     },
-    menubar: {},
-    about: {
-      newtab: {
-        gridLayoutSize: 'small',
-        sites: topSites,
-        ignoredTopSites: [],
-        pinnedTopSites: pinnedTopSites
-      }
-    },
-    defaultWindowParams: {}
+    menubar: {}
   }
-}
-
-/**
- * Determines if a protocol is handled.
- * app.on('ready') must have been fired before this is called.
- */
-module.exports.isProtocolHandled = (protocol) => {
-  protocol = (protocol || '').split(':')[0]
-  return navigatableTypes.includes(`${protocol}:`) ||
-      electron.session.defaultSession.protocol.isNavigatorProtocolHandled(protocol)
 }

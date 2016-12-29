@@ -15,8 +15,7 @@ module.exports.init = () => {
   if (!appConfig[resourceName].enabled) {
     return
   }
-
-  Filtering.registerBeforeSendHeadersFilteringCB((details, isPrivate) => {
+  Filtering.registerBeforeSendHeadersFilteringCB((details) => {
     if (details.resourceType !== 'mainFrame') {
       return {
         resourceName
@@ -27,29 +26,24 @@ module.exports.init = () => {
     let domain = URL.parse(details.url).hostname.split('.').slice(-2).join('.')
     let hack = siteHacks[domain]
     let customCookie
-    let requestHeaders
     let cancel
     if (hack && hack.onBeforeSendHeaders) {
       const result = hack.onBeforeSendHeaders.call(this, details)
-      if (result) {
+      if (result && result.customCookie) {
         customCookie = result.customCookie
-        requestHeaders = result.requestHeaders
-        if (Filtering.isResourceEnabled(appConfig.resourceNames.NOSCRIPT, 'https://twitter.com/', isPrivate) &&
-          result.cancel) {
-          // cancel is only called on Twitter where noscript is enabled
-          cancel = true
-        }
+      } else if (Filtering.isResourceEnabled(appConfig.resourceNames.NOSCRIPT, 'https://twitter.com/') &&
+        result && result.cancel) {
+        // cancel is only called on Twitter where noscript is enabled
+        cancel = true
       }
     }
     return {
       resourceName,
-      requestHeaders,
       customCookie,
       cancel
     }
   })
-
-  Filtering.registerBeforeRequestFilteringCB((details, isPrivate) => {
+  Filtering.registerBeforeRequestFilteringCB((details) => {
     let domain = URL.parse(details.url).hostname
     let hack = siteHacks[domain]
 
@@ -62,11 +56,10 @@ module.exports.init = () => {
         resourceName: module.exports.resourceName
       }
     }
-
     if (hack && hack.onBeforeRequest &&
         (hack.enableForAll ||
-         hack.enableForAdblock && Filtering.isResourceEnabled(appConfig.resourceNames.ADBLOCK, mainFrameUrl, isPrivate) ||
-         hack.enableForTrackingProtection && Filtering.isResourceEnabled(appConfig.resourceNames.TRACKING_PROTECTION, mainFrameUrl, isPrivate))) {
+         hack.enableForAdblock && Filtering.isResourceEnabled(appConfig.resourceNames.ADBLOCK, mainFrameUrl) ||
+         hack.enableForTrackingProtection && Filtering.isResourceEnabled(appConfig.resourceNames.TRACKING_PROTECTION, mainFrameUrl))) {
       const result = hack.onBeforeRequest.call(this, details)
       if (result && result.redirectURL) {
         redirectURL = result.redirectURL

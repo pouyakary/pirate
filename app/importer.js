@@ -10,6 +10,7 @@ const dialog = electron.dialog
 const BrowserWindow = electron.BrowserWindow
 const session = electron.session
 const Immutable = require('immutable')
+const {showImportWarning, showImportSuccess} = require('./aboutDialog')
 const siteUtil = require('../js/state/siteUtil')
 const AppStore = require('../js/stores/appStore')
 const siteTags = require('../js/constants/siteTags')
@@ -17,8 +18,6 @@ const appActions = require('../js/actions/appActions')
 const messages = require('../js/constants/messages')
 const settings = require('../js/constants/settings')
 const getSetting = require('../js/settings').getSetting
-const path = require('path')
-const locale = require('./locale')
 
 var isMergeFavorites = false
 var isImportingBookmarks = false
@@ -107,8 +106,7 @@ const getParentFolderId = (path, pathMap, sites, topLevelFolderId, nextFolderIdO
       customTitle: parentFolder,
       folderId: parentFolderId,
       parentFolderId: getParentFolderId(path, pathMap, sites, topLevelFolderId, nextFolderIdObject),
-      lastAccessedTime: 0,
-      creationTime: (new Date()).getTime(),
+      lastAccessedTime: (new Date()).getTime(),
       tags: [siteTags.BOOKMARK_FOLDER]
     }
     sites.push(folder)
@@ -128,8 +126,7 @@ importer.on('add-bookmarks', (e, bookmarks, topLevelFolder) => {
       customTitle: topLevelFolder,
       folderId: topLevelFolderId,
       parentFolderId: 0,
-      lastAccessedTime: 0,
-      creationTime: (new Date()).getTime(),
+      lastAccessedTime: (new Date()).getTime(),
       tags: [siteTags.BOOKMARK_FOLDER]
     })
   } else {
@@ -153,19 +150,16 @@ importer.on('add-bookmarks', (e, bookmarks, topLevelFolder) => {
         customTitle: bookmarks[i].title,
         folderId: folderId,
         parentFolderId: parentFolderId,
-        lastAccessedTime: 0,
-        creationTime: bookmarks[i].creation_time * 1000,
+        lastAccessedTime: bookmarks[i].creation_time * 1000,
         tags: [siteTags.BOOKMARK_FOLDER]
       }
       sites.push(folder)
     } else {
       const site = {
         title: bookmarks[i].title,
-        customTitle: bookmarks[i].title,
         location: bookmarks[i].url,
         parentFolderId: parentFolderId,
-        lastAccessedTime: 0,
-        creationTime: bookmarks[i].creation_time * 1000,
+        lastAccessedTime: bookmarks[i].creation_time * 1000,
         tags: [siteTags.BOOKMARK]
       }
       sites.push(site)
@@ -177,21 +171,16 @@ importer.on('add-bookmarks', (e, bookmarks, topLevelFolder) => {
 importer.on('add-favicons', (e, detail) => {
   let faviconMap = {}
   detail.forEach((entry) => {
-    if (entry.favicon_url.includes('made-up-favicon')) {
-      for (let url of entry.urls) {
-        faviconMap[url] = entry.png_data
-      }
+    if (entry.favicon_url.startsWith('made-up-favicon:')) {
+      faviconMap[entry.urls[0]] = entry.png_data
     } else {
-      for (let url of entry.urls) {
-        faviconMap[url] = entry.favicon_url
-      }
+      faviconMap[entry.urls[0]] = entry.favicon_url
     }
   })
   let sites = AppStore.getState().get('sites')
   sites = sites.map((site) => {
-    if ((site.get('favicon') === undefined && site.get('location') !== undefined &&
-      faviconMap[site.get('location')] !== undefined) ||
-      (site.get('favicon') !== undefined && site.get('favicon').includes('made-up-favicon'))) {
+    if (site.get('favicon') === undefined && site.get('location') !== undefined &&
+      faviconMap[site.get('location')] !== undefined) {
       return site.set('favicon', faviconMap[site.get('location')])
     } else {
       return site
@@ -225,34 +214,6 @@ importer.on('add-cookies', (e, cookies) => {
     })
   }
 })
-
-const showImportWarning = function () {
-  // The timeout is in case there's a call just after the modal to hide the menu.
-  // showMessageBox is a modal and blocks everything otherwise, so menu would remain open
-  // while the dialog is displayed.
-  setTimeout(() => {
-    dialog.showMessageBox({
-      title: 'Brave',
-      message: `${locale.translation('closeFirefoxWarning')}`,
-      icon: path.join(__dirname, '..', 'app', 'extensions', 'brave', 'img', 'braveAbout.png'),
-      buttons: [locale.translation('closeFirefoxWarningOk')]
-    })
-  }, 50)
-}
-
-const showImportSuccess = function () {
-  // The timeout is in case there's a call just after the modal to hide the menu.
-  // showMessageBox is a modal and blocks everything otherwise, so menu would remain open
-  // while the dialog is displayed.
-  setTimeout(() => {
-    dialog.showMessageBox({
-      title: 'Brave',
-      message: `${locale.translation('importSuccess')}`,
-      icon: path.join(__dirname, '..', 'app', 'extensions', 'brave', 'img', 'braveAbout.png'),
-      buttons: [locale.translation('importSuccessOk')]
-    })
-  }, 50)
-}
 
 importer.on('show-warning-dialog', (e) => {
   showImportWarning()

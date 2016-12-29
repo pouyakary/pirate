@@ -18,10 +18,9 @@ const messages = require('../../js/constants/messages')
 const settings = require('../../js/constants/settings')
 const siteTags = require('../../js/constants/siteTags')
 const dialog = electron.dialog
-const app = electron.app
 const BrowserWindow = electron.BrowserWindow
 const {fileUrl} = require('../../js/lib/appUrlUtil')
-const menuUtil = require('../common/lib/menuUtil')
+const menuUtil = require('./lib/menuUtil')
 const getSetting = require('../../js/settings').getSetting
 const locale = require('../locale')
 const {isSiteBookmarked} = require('../../js/state/siteUtil')
@@ -220,9 +219,19 @@ const createViewSubmenu = () => {
       click: function (item, focusedWindow) {
         CommonMenu.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_ACTIVE_FRAME_STOP])
       }
+    }, {
+      label: locale.translation('reloadPage'),
+      accelerator: 'CmdOrCtrl+R',
+      click: function (item, focusedWindow) {
+        CommonMenu.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_ACTIVE_FRAME_RELOAD])
+      }
+    }, {
+      label: locale.translation('cleanReload'),
+      accelerator: 'CmdOrCtrl+Shift+R',
+      click: function (item, focusedWindow) {
+        CommonMenu.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_ACTIVE_FRAME_CLEAN_RELOAD])
+      }
     },
-    CommonMenu.reloadPageMenuItem(),
-    CommonMenu.cleanReloadMenuItem(),
     CommonMenu.separatorMenuItem,
     /*
     {
@@ -313,14 +322,24 @@ const createHistorySubmenu = () => {
     CommonMenu.separatorMenuItem,
     */
     {
-      label: locale.translation('clearBrowsingData'),
+      label: locale.translation('clearHistory'),
       accelerator: 'Shift+CmdOrCtrl+Delete',
       click: function (item, focusedWindow) {
         CommonMenu.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_OPEN_CLEAR_BROWSING_DATA_PANEL, {browserHistory: true}])
       }
+    }, {
+      label: locale.translation('clearCache'),
+      click: function (item, focusedWindow) {
+        CommonMenu.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_OPEN_CLEAR_BROWSING_DATA_PANEL, {cachedImagesAndFiles: true}])
+      }
+    }, {
+      label: locale.translation('clearSiteData'),
+      click: function (item, focusedWindow) {
+        CommonMenu.sendToFocusedWindow(focusedWindow, [messages.SHORTCUT_OPEN_CLEAR_BROWSING_DATA_PANEL, {allSiteCookies: true, cachedImagesAndFiles: true}])
+      }
     }
   ]
-  submenu = submenu.concat(menuUtil.createRecentlyClosedTemplateItems(Immutable.fromJS(Object.keys(closedFrames).map(key => closedFrames[key]))))
+  submenu = submenu.concat(menuUtil.createRecentlyClosedMenuItems(Immutable.fromJS(Object.keys(closedFrames).map(key => closedFrames[key]))))
 
   submenu.push(
     // TODO: recently visited
@@ -365,7 +384,7 @@ const createBookmarksSubmenu = () => {
     CommonMenu.importBrowserDataMenuItem()
   ]
 
-  const bookmarks = menuUtil.createBookmarkTemplateItems(appStore.getState().get('sites'))
+  const bookmarks = menuUtil.createBookmarkMenuItems(appStore.getState().get('sites'))
   if (bookmarks.length > 0) {
     submenu.push(CommonMenu.separatorMenuItem)
     submenu = submenu.concat(bookmarks)
@@ -457,7 +476,7 @@ const createDebugSubmenu = () => {
       // To debug all renderer processes then add the appendSwitch call to app/index.js
       label: 'append wait renderer switch',
       click: function () {
-        app.commandLine.appendSwitch('renderer-startup-dialog')
+        electron.app.commandLine.appendSwitch('renderer-startup-dialog')
       }
     }, {
       label: 'Crash main process',
@@ -468,8 +487,8 @@ const createDebugSubmenu = () => {
       label: 'Relaunch',
       accelerator: 'Command+Alt+R',
       click: function () {
-        app.relaunch({args: process.argv.slice(1) + ['--relaunch']})
-        app.quit()
+        electron.app.relaunch({args: process.argv.slice(1) + ['--relaunch']})
+        electron.app.quit()
       }
     }, {
       label: locale.translation('toggleBrowserConsole'),
@@ -489,15 +508,6 @@ const createDebugSubmenu = () => {
   ]
 }
 
-const createDockSubmenu = () => {
-  return [
-    {
-      label: locale.translation('newWindow'),
-      click: () => appActions.newWindow()
-    }
-  ]
-}
-
 /**
  * Will only build the initial menu, which is mostly static items
  * Dynamic items (Bookmarks, History) get updated w/ updateMenu
@@ -512,8 +522,8 @@ const createMenu = () => {
     {
       label: locale.translation('bravery'),
       submenu: [
+        CommonMenu.braveryGlobalMenuItem(),
         CommonMenu.braverySiteMenuItem(),
-        CommonMenu.separatorMenuItem,
         CommonMenu.braveryPaymentsMenuItem()
       ]
     },
@@ -531,10 +541,12 @@ const createMenu = () => {
       submenu: [
         CommonMenu.aboutBraveMenuItem(),
         CommonMenu.separatorMenuItem,
-        CommonMenu.preferencesMenuItem(),
+        CommonMenu.checkForUpdateMenuItem(),
         CommonMenu.separatorMenuItem,
         CommonMenu.importBrowserDataMenuItem(),
-        CommonMenu.checkForUpdateMenuItem(),
+        CommonMenu.separatorMenuItem,
+        CommonMenu.preferencesMenuItem(),
+        CommonMenu.separatorMenuItem,
         CommonMenu.submitFeedbackMenuItem(),
         CommonMenu.separatorMenuItem,
         {
@@ -568,38 +580,15 @@ const createMenu = () => {
   if (oldMenu) {
     oldMenu.destroy()
   }
-
-  if (app.dock) {
-    const dockMenu = Menu.buildFromTemplate(createDockSubmenu())
-    app.dock.setMenu(dockMenu)
-  }
-}
-
-const setMenuItemChecked = (label, checked) => {
-  // Update electron menu (Mac / Linux)
-  const systemMenuItem = menuUtil.getMenuItem(appMenu, label)
-  systemMenuItem.checked = checked
-
-  // Update in-memory menu template (Windows)
-  const oldTemplate = appStore.getState().getIn(['menu', 'template'])
-  const newTemplate = menuUtil.setTemplateItemChecked(oldTemplate, label, checked)
-  if (newTemplate) {
-    appActions.setMenubarTemplate(newTemplate)
-  }
 }
 
 const doAction = (action) => {
   switch (action.actionType) {
     case windowConstants.WINDOW_SET_FOCUSED_FRAME:
-      // Update the checkbox next to "Bookmark Page" (Bookmarks menu)
+      // TODO check/uncheck menu item instead of recreating menu
       currentLocation = action.frameProps.get('location')
-      setMenuItemChecked(locale.translation('bookmarkPage'), isCurrentLocationBookmarked())
-      break
-    case appConstants.APP_CHANGE_SETTING:
-      if (action.key === settings.SHOW_BOOKMARKS_TOOLBAR) {
-        // Update the checkbox next to "Bookmarks Toolbar" (Bookmarks menu)
-        setMenuItemChecked(locale.translation('bookmarksToolbar'), action.value)
-      }
+      let menuItem = menuUtil.getMenuItem(appMenu, locale.translation('bookmarkPage'))
+      menuItem.checked = isCurrentLocationBookmarked()
       break
     case windowConstants.WINDOW_UNDO_CLOSED_FRAME:
       appDispatcher.waitFor([appStore.dispatchToken], () => {

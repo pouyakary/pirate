@@ -1,13 +1,14 @@
-/* global describe, it, before, beforeEach */
+/* global describe, it, before */
 
 const Brave = require('../lib/brave')
 const messages = require('../../js/constants/messages')
 const settings = require('../../js/constants/settings')
-const {urlInput, backButton, forwardButton, activeTabTitle, activeTabFavicon, newFrameButton} = require('../lib/selectors')
+const {urlInput, backButton, forwardButton, activeTabTitle} = require('../lib/selectors')
 
-describe('tab tests', function () {
+describe('tabs', function () {
   function * setup (client) {
     yield client
+      .waitUntilWindowLoaded()
       .waitForUrl(Brave.newTabUrl)
       .waitForBrowserWindow()
       .waitForVisible(urlInput)
@@ -70,31 +71,6 @@ describe('tab tests', function () {
     it('makes the non partitioned webview visible', function * () {
       yield this.app.client
         .waitForVisible('webview[partition="persist:default"]')
-    })
-  })
-
-  describe('new tab button', function () {
-    Brave.beforeEach(this)
-    beforeEach(function * () {
-      yield setup(this.app.client)
-    })
-
-    it('creates a new tab when clicked', function * () {
-      yield this.app.client
-        .click(newFrameButton)
-        .waitForExist('.tab[data-frame-key="2"]')
-    })
-    it('shows a context menu when long pressed (click and hold)', function * () {
-      yield this.app.client
-        .moveToObject(newFrameButton)
-        .buttonDown(0)
-        .waitForExist('.contextMenu .contextMenuItem .contextMenuItemText')
-        .buttonUp(0)
-    })
-    it('shows a context menu when right clicked', function * () {
-      yield this.app.client
-        .rightClick(newFrameButton)
-        .waitForExist('.contextMenu .contextMenuItem .contextMenuItemText')
     })
   })
 
@@ -234,6 +210,35 @@ describe('tab tests', function () {
     })
   })
 
+  describe('webview background-tab events', function () {
+    Brave.beforeAll(this)
+    before(function * () {
+      yield setup(this.app.client)
+      yield this.app.client
+        .sendWebviewEvent(1, 'new-window', {}, 'new-window', Brave.server.url('page1.html'), 'some-frame', 'background-tab')
+    })
+    it('opens in a new, but not active tab', function * () {
+      yield this.app.client
+        .windowByUrl(Brave.browserWindowUrl)
+        .waitForExist('.tab.active[data-frame-key="1"]')
+        .waitForExist('.tab:not(.active)[data-frame-key="2"]')
+    })
+  })
+
+  describe('webview foreground-tab events', function () {
+    Brave.beforeAll(this)
+    before(function * () {
+      yield setup(this.app.client)
+      yield this.app.client
+        .sendWebviewEvent(1, 'new-window', {}, 'new-window', Brave.server.url('page1.html'), 'some-frame', 'foreground-tab')
+    })
+    it('opens in a new active tab', function * () {
+      yield this.app.client
+        .waitForExist('.frameWrapper:not(.isActive) webview[data-frame-key="1"]')
+        .waitForExist('.frameWrapper.isActive webview[data-frame-key="2"]')
+    })
+  })
+
   describe('webview previews when tab is hovered', function () {
     Brave.beforeAll(this)
     before(function * () {
@@ -295,34 +300,6 @@ describe('tab tests', function () {
         .windowByUrl(Brave.browserWindowUrl)
         .waitForExist('.tab[data-frame-key="3"]')
       yield this.app.client.waitForExist('.frameWrapper.isActive webview[data-frame-key="3"]')
-    })
-  })
-
-  describe('tabs with icons', function () {
-    Brave.beforeAll(this)
-    before(function * () {
-      yield setup(this.app.client)
-    })
-
-    it('shows tab\'s icon when page is not about:blank or about:newtab ', function * () {
-      var url = Brave.server.url('page1.html')
-      yield this.app.client
-        .tabByIndex(0)
-        .loadUrl(url)
-        .windowByUrl(url)
-        .waitForExist(activeTabFavicon)
-    })
-
-    it('about:newtab and about:blank shouldn\'t have a tab icon', function * () {
-      yield this.app.client
-        .tabByIndex(0)
-        .loadUrl('about:blank')
-        .windowByUrl('about:blank')
-        .waitForExist(activeTabFavicon, 1000, true)
-        .tabByIndex(0)
-        .loadUrl('about:newtab')
-        .windowByUrl('about:newtab')
-        .waitForExist(activeTabFavicon, 1000, true)
     })
   })
 })

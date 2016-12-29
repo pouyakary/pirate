@@ -33,46 +33,6 @@ Dispatches an event to the main process to create a new window.
 
 
 
-### newTab(createProperties) 
-
-A new tab has been requested
-
-**Parameters**
-
-**createProperties**: `Object`, windowId, url, active, openerTabId
-
-
-
-### tabCreated(tabValue) 
-
-A new tab has been created
-
-**Parameters**
-
-**tabValue**: `Object`, A new tab has been created
-
-
-
-### tabUpdated(tabValue) 
-
-A tab has been updated
-
-**Parameters**
-
-**tabValue**: `Object`, A tab has been updated
-
-
-
-### tabClosed(tabId) 
-
-Closes an open tab
-
-**Parameters**
-
-**tabId**: `number`, Closes an open tab
-
-
-
 ### addSite(siteDetail, tag, originalSiteDetail, destinationIsParent) 
 
 Adds a site to the site list
@@ -144,27 +104,13 @@ Dispatches a message to clear all completed downloads
 
 
 
-### ledgerRecoverySucceeded() 
+### setDefaultWindowSize(size) 
 
-Dispatches a message to clear all completed downloads
-
-
-
-### ledgerRecoveryFailed() 
-
-Dispatches a message to clear all completed downloads
-
-
-
-### defaultWindowParamsChanged(size, position) 
-
-Sets the default window size / position
+Sets the default window size
 
 **Parameters**
 
 **size**: `Array`, [width, height]
-
-**position**: `Array`, [x, y]
 
 
 
@@ -203,16 +149,6 @@ Sets whether the resource is enabled or not.
 **resourceName**: `string`, 'adblock', 'trackingProtection', or 'httpsEverywhere'
 
 **enabled**: `boolean`, true if the resource is enabled.
-
-
-
-### resourceReady(resourceName) 
-
-Indicates a resource is ready
-
-**Parameters**
-
-**resourceName**: `string`, 'widevine'
 
 
 
@@ -467,26 +403,13 @@ Remove credit card data
 
 
 
-### autofillDataChanged(addressGuids, creditCardGuids) 
-
-Autofill data changed
-
-**Parameters**
-
-**addressGuids**: `Array`, the guid array to access address entries in autofill DB
-
-**creditCardGuids**: `Array`, the guid array to access credit card entries in autofill DB
-
-
-
-### windowBlurred(windowId) 
+### windowBlurred(appWindowId) 
 
 Dispatches a message when appWindowId loses focus
-Dispatches a message when windowId loses focus
 
 **Parameters**
 
-**windowId**: `Number`, the unique id of the window
+**appWindowId**: `Number`, the unique id of the window
 
 
 
@@ -513,132 +436,9 @@ Dispatches a message when the network is disconnected
 
 
 
-### defaultBrowserUpdated(useBrave) 
+### submitFeedback() 
 
-Dispatch a message to set default browser
-
-**Parameters**
-
-**useBrave**: `boolean`, whether set Brave as default browser
-
-
-
-### defaultBrowserCheckComplete() 
-
-Dispatch a message to indicate default browser check is complete
-
-
-
-### populateHistory() 
-
-Notify the AppStore to provide default history values.
-
-
-
-### dataURLCopied() 
-
-Dispatch a message to copy data URL to clipboard
-
-
-
-### shuttingDown() 
-
-Dispatches a message when the app is shutting down.
-
-
-
-### downloadRevealed(downloadId) 
-
-Dispatches a message when a download is being revealed.
-Typically this will open the download directory in finder / explorer and select the icon.
-
-**Parameters**
-
-**downloadId**: `string`, ID of the download being revealed
-
-
-
-### downloadOpened(downloadId) 
-
-Dispatches a message when a download is being opened.
-
-**Parameters**
-
-**downloadId**: `string`, ID of the download being opened
-
-
-
-### downloadActionPerformed(downloadId, downloadAction) 
-
-Dispatches a message when an electron download action is being performed (pause, resume, cancel)
-
-**Parameters**
-
-**downloadId**: `string`, ID of the download item the action is being performed to
-
-**downloadAction**: `string`, the action to perform from constants/electronDownloadItemActions.js
-
-
-
-### downloadCopiedToClipboard(downloadId) 
-
-Dispatches a message when a download URL is being copied to the clipboard
-
-**Parameters**
-
-**downloadId**: `string`, ID of the download item being copied to the clipboard
-
-
-
-### downloadDeleted(downloadId) 
-
-Dispatches a message when a download is being deleted
-
-**Parameters**
-
-**downloadId**: `string`, ID of the download item being deleted
-
-
-
-### downloadCleared(downloadId) 
-
-Dispatches a message when a download is being cleared
-
-**Parameters**
-
-**downloadId**: `string`, ID of the download item being cleared
-
-
-
-### downloadRedownloaded(downloadId) 
-
-Dispatches a message when a download is being redownloaded
-
-**Parameters**
-
-**downloadId**: `string`, ID of the download item being redownloaded
-
-
-
-### clipboardTextCopied(text) 
-
-Dispatches a message when text is updated to the clipboard
-
-**Parameters**
-
-**text**: `string`, clipboard text which is copied
-
-
-
-### tabCloned(tabId, options) 
-
-Dispatches a message when a tab is being cloned
-
-**Parameters**
-
-**tabId**: `number`, The tabId of the tab to clone
-
-**options**: `object`, object containing options such as acive, back, and forward booleans
+Dispatches a message to submit feedback
 
 
 

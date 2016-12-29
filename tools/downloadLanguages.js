@@ -5,11 +5,10 @@
 /*
   Environment Variables
 
-  USERNAME            - valid Transifex user name with read privileges
-  PASSWORD            - password for above username
+  USERNAME        - valid Transifex user name with read privileges
+  PASSWORD        - password for above username
 
-  LANG [optional]     - single language code to retrieve in xx-XX format (I.e. en-US)
-  RESOURCE [optional] - single file name to retrieve (I.e. app)
+  LANG [optional] - single language code to retrieve in xx-XX format (I.e. en-US)
 */
 
 'use strict'
@@ -47,23 +46,18 @@ if (!(username && password)) {
 }
 
 // URI and resource list
-const TEMPLATE = 'https://www.transifex.com/api/2/project/brave-laptop/resource/RESOURCE_SLUG/translation/LANG_CODE/?file'
+const TEMPLATE = 'http://www.transifex.com/api/2/project/brave-laptop/resource/RESOURCE_SLUG/translation/LANG_CODE/?file'
 
 // Retrieve resource names dynamically
 var resources = fs.readdirSync(path.join(__dirname, '..', 'app', 'extensions', 'brave', 'locales', 'en-US')).map(function (language) {
   return language.split(/\./)[0]
 })
 
-// allow download of a single resource
-if (process.env.RESOURCE) {
-  resources = [process.env.RESOURCE]
-}
-
 // For each language / resource combination
 languages.forEach(function (languageCode) {
   resources.forEach(function (resource) {
     // Build the URI
-    var URI = TEMPLATE.replace('RESOURCE_SLUG', resource.toLowerCase() + 'properties')
+    var URI = TEMPLATE.replace('RESOURCE_SLUG', resource + 'properties')
     URI = URI.replace('LANG_CODE', languageCode)
 
     // Authorize and request the translation file
@@ -100,11 +94,7 @@ languages.forEach(function (languageCode) {
         if (process.env.TEST) {
           console.log(body)
         } else {
-          if (body === 'Not Found') {
-            console.log('  *** WARNING - empty file contents for ' + resource + '. Not writing. ***')
-          } else {
-            fs.writeFileSync(filename, body)
-          }
+          fs.writeFileSync(filename, body)
         }
       }
     })

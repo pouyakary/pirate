@@ -11,10 +11,7 @@ const ExtensionConstants = {
   EXTENSION_INSTALLED: _,
   EXTENSION_UNINSTALLED: _,
   EXTENSION_ENABLED: _,
-  EXTENSION_DISABLED: _,
-  CONTEXT_MENU_CREATED: _,
-  CONTEXT_MENU_ALL_REMOVED: _,
-  CONTEXT_MENU_CLICKED: _
+  EXTENSION_DISABLED: _
 }
 
 module.exports = mapValuesByKeys(ExtensionConstants)

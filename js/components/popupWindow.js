@@ -6,7 +6,7 @@ const React = require('react')
 const ReactDOM = require('react-dom')
 const ImmutableComponent = require('./immutableComponent')
 const cx = require('../lib/classSet')
-const KeyCodes = require('../../app/common/constants/keyCodes')
+const KeyCodes = require('../constants/keyCodes')
 const windowActions = require('../actions/windowActions')
 
 /**
@@ -22,7 +22,7 @@ class PopupWindow extends ImmutableComponent {
   }
 
   onKeyDown (e) {
-    if (e.keyCode === KeyCodes.ESC) {
+    if (e.keyCode === KeyCodes.ESC || e.keyCode === KeyCodes.TAB) {
       windowActions.setPopupWindowDetail()
     }
   }

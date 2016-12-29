@@ -11,6 +11,7 @@ const appStoreRenderer = require('../stores/appStoreRenderer')
 const windowActions = require('../actions/windowActions')
 const Main = require('./main')
 const SiteTags = require('../constants/siteTags')
+const config = require('../constants/config')
 const cx = require('../lib/classSet')
 const {getPlatformStyles} = require('../../app/common/lib/platformUtil')
 
@@ -40,7 +41,9 @@ class Window extends React.Component {
   componentWillMount () {
     if (!this.props.initWindowState || this.props.initWindowState.frames.length === 0) {
       if (this.props.frames.length === 0) {
-        windowActions.newFrame()
+        windowActions.newFrame({
+          location: config.defaultUrl
+        })
       } else {
         this.props.frames.forEach((frame) => {
           windowActions.newFrame(frame)
@@ -57,13 +60,6 @@ class Window extends React.Component {
     platformClasses.forEach((className) => {
       classes[className] = true
     })
-
-    // Windows puts a 1px border around frameless window
-    // For Windows 10, this defaults to blue. When window
-    // becomes inactive it needs to change to gray.
-    if (classes['win10']) {
-      classes['inactive'] = !this.windowState.getIn(['ui', 'hasFocus'])
-    }
 
     return <div id='windowContainer' className={cx(classes)} >
       <Main windowState={this.state.immutableData.windowState}

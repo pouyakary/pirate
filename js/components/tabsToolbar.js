@@ -5,6 +5,7 @@
 const React = require('react')
 const ImmutableComponent = require('./immutableComponent')
 const Tabs = require('./tabs')
+const Button = require('./button')
 const PinnedTabs = require('./pinnedTabs')
 const contextMenus = require('../contextMenus')
 const windowStore = require('../stores/windowStore')
@@ -12,7 +13,8 @@ const windowStore = require('../stores/windowStore')
 class TabsToolbarButtons extends ImmutableComponent {
   render () {
     return <div className='tabsToolbarButtons'>
-      <span data-l10n-id='menuButton'
+      <Button iconClass='fa-bars'
+        l10nId='menuButton'
         className='navbutton menuButton'
         onClick={this.props.onMenu} />
     </div>
@@ -26,10 +28,6 @@ class TabsToolbar extends ImmutableComponent {
   }
 
   onContextMenu (e) {
-    if (this.refs.tabs.wasNewTabClicked(e.target)) {
-      // Don't show the tabs menu if the new tab "+"" was clicked
-      return
-    }
     contextMenus.onTabsToolbarContextMenu(windowStore.getFrame(this.props.activeFrameKey), undefined, undefined, e)
   }
 
@@ -55,9 +53,7 @@ class TabsToolbar extends ImmutableComponent {
           />
         : null
       }
-      <Tabs
-        ref='tabs'
-        tabs={unpinnedTabs}
+      <Tabs tabs={unpinnedTabs}
         shouldAllowWindowDrag={this.props.shouldAllowWindowDrag}
         draggingOverData={this.props.draggingOverData}
         paintTabs={this.props.paintTabs}

@@ -2,10 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { makeImmutable } = require('./immutableUtil')
+const tabState = require('./tabState')
+const {makeImmutable} = require('./immutableUtil')
 const Immutable = require('immutable')
-const windowConstants = require('../../../js/constants/windowConstants')
-const platformUtil = require('../lib/platformUtil')
+
+let transientFields = []
+
+tabState.addTransientFields(['browserAction'])
 
 const browserActionDefaults = Immutable.fromJS({
   tabs: {}
@@ -53,20 +56,6 @@ const extensionState = {
   browserActionUpdated: (state, action) => {
     action = makeImmutable(action)
     state = makeImmutable(state)
-    if (action.get('actionType') === windowConstants.WINDOW_SET_NAVIGATED &&
-      action.get('tabId')) {
-      let tabId = action.get('tabId')
-      let extensions = extensionState.getEnabledExtensions(state)
-      extensions && extensions.forEach((extension) => {
-        let tabs = extension.getIn(['browserAction', 'tabs'])
-        if (tabs && tabs.get(tabId)) {
-          tabs = tabs.set(tabId, Immutable.Map())
-          extension = extension.setIn(['browserAction', 'tabs'], tabs)
-          state = state.setIn(['extensions', extension.get('id')], extension)
-        }
-      })
-      return state
-    }
     let extensionId = action.get('extensionId').toString()
     let extension = extensionState.getExtensionById(state, extensionId)
     if (extension && extension.get('browserAction')) {
@@ -85,17 +74,11 @@ const extensionState = {
     }
   },
 
-  browserActionBackgroundImage: (browserAction, tabId) => {
-    tabId = tabId ? tabId.toString() : '-1'
-    if (browserAction.get('base_path')) {
-      if (browserAction.getIn(['tabs', tabId, 'path', '19']) && browserAction.getIn(['tabs', tabId, 'path', '38'])) {
-        return '-webkit-image-set(url(\'' + browserAction.get('base_path') + '/' + browserAction.getIn(['tabs', tabId, 'path', '19']) +
-          '\') 1x, url(\'' + browserAction.get('base_path') + '/' + browserAction.getIn(['tabs', tabId, 'path', '38']) + '\') 2x'
-      }
-      if (browserAction.getIn(['path', '19']) && browserAction.getIn(['path', '38'])) {
-        return '-webkit-image-set(url(\'' + browserAction.get('base_path') + '/' + browserAction.getIn(['path', '19']) +
-          '\') 1x, url(\'' + browserAction.get('base_path') + '/' + browserAction.getIn(['path', '38']) + '\') 2x'
-      }
+  browserActionBackgroundImage: (browserAction) => {
+    // TODO(bridiver) - handle icon single
+    if (browserAction.get('base_path') && browserAction.getIn(['path', '19']) && browserAction.getIn(['path', '38'])) {
+      return '-webkit-image-set(url(\'' + browserAction.get('base_path') + '/' + browserAction.getIn(['path', '19']) +
+                                          '\') 1x, url(\'' + browserAction.get('base_path') + '/' + browserAction.getIn(['path', '38']) + '\') 2x'
     }
     return ''
   },
@@ -131,70 +114,16 @@ const extensionState = {
     }
   },
 
+  getTransientFields: () => {
+    return transientFields
+  },
+
   getPersistentTabState: (extension) => {
     extension = makeImmutable(extension)
     extensionState.getTransientFields().forEach((field) => {
       extension = extension.delete(field)
     })
     return extension
-  },
-
-  contextMenuCreated: (state, action) => {
-    action = makeImmutable(action)
-    state = makeImmutable(state)
-    let extensionId = action.get('extensionId').toString()
-    let extension = extensionState.getExtensionById(state, extensionId)
-    if (extension) {
-      if (state.getIn(['extensions', action.get('extensionId'), 'contextMenus']) === undefined) {
-        state = state.setIn(['extensions', action.get('extensionId'), 'contextMenus'], new Immutable.List())
-      }
-      let contextMenus = state.getIn(['extensions', action.get('extensionId'), 'contextMenus'])
-      const basePath =
-        platformUtil.getPathFromFileURI(state.getIn(['extensions', action.get('extensionId'), 'base_path']))
-      const iconPath = action.get('icon')
-      if (!iconPath) {
-        contextMenus = contextMenus.push({
-          extensionId: action.get('extensionId'),
-          menuItemId: action.get('menuItemId'),
-          properties: action.get('properties').toJS()
-        })
-      } else {
-        contextMenus = contextMenus.push({
-          extensionId: action.get('extensionId'),
-          menuItemId: action.get('menuItemId'),
-          properties: action.get('properties').toJS(),
-          icon: basePath + '/' + iconPath
-        })
-      }
-      return state.setIn(['extensions', action.get('extensionId'), 'contextMenus'],
-        contextMenus)
-    } else {
-      return state
-    }
-  },
-
-  contextMenuAllRemoved: (state, action) => {
-    action = makeImmutable(action)
-    state = makeImmutable(state)
-    let extensionId = action.get('extensionId').toString()
-    let extension = extensionState.getExtensionById(state, extensionId)
-    if (extension) {
-      return state.deleteIn(['extensions', action.get('extensionId'), 'contextMenus'])
-    } else {
-      return state
-    }
-  },
-
-  getContextMenusProperties: (state) => {
-    let allProperties = []
-    let extensions = extensionState.getEnabledExtensions(state)
-    extensions && extensions.forEach((extension) => {
-      let contextMenus = extension.get('contextMenus')
-      contextMenus && contextMenus.forEach((contextMenu) => {
-        allProperties.push(contextMenu.toJS())
-      })
-    })
-    return allProperties
   }
 }
 

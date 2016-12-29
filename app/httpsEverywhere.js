@@ -112,11 +112,11 @@ function startHttpsEverywhere () {
   Filtering.registerBeforeRedirectFilteringCB(onBeforeRedirect)
 }
 
-function onBeforeHTTPRequest (details, isPrivate) {
+function onBeforeHTTPRequest (details) {
   let result = { resourceName: module.exports.resourceName }
 
   const mainFrameUrl = Filtering.getMainFrameUrl(details)
-  if (!mainFrameUrl || !Filtering.isResourceEnabled(module.exports.resourceName, mainFrameUrl, isPrivate)) {
+  if (!mainFrameUrl || !Filtering.isResourceEnabled(module.exports.resourceName, mainFrameUrl)) {
     return result
   }
   // Ignore URLs that are not HTTP
@@ -137,13 +137,9 @@ function onBeforeHTTPRequest (details, isPrivate) {
   return result
 }
 
-function onBeforeRedirect (details, isPrivate) {
+function onBeforeRedirect (details) {
   const mainFrameUrl = Filtering.getMainFrameUrl(details)
-  if (!mainFrameUrl || !Filtering.isResourceEnabled(module.exports.resourceName, mainFrameUrl, isPrivate)) {
-    return
-  }
-  // Ignore URLs that are not HTTP
-  if (!['http:', 'https:'].includes(urlParse(details.url).protocol)) {
+  if (!mainFrameUrl || !Filtering.isResourceEnabled(module.exports.resourceName, mainFrameUrl)) {
     return
   }
 

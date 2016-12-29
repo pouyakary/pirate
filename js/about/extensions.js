@@ -9,7 +9,7 @@ const ImmutableComponent = require('../components/immutableComponent')
 const messages = require('../constants/messages')
 const aboutActions = require('./aboutActions')
 
-const ipc = window.chrome.ipcRenderer
+const ipc = window.chrome.ipc
 
 // Stylesheets
 require('../../less/about/itemList.less')
@@ -40,7 +40,7 @@ class ExtensionItem extends ImmutableComponent {
         <h3 className='extensionTitle'>{bravifyText(this.props.extension.get('name'))}</h3>
         <span className='extensionVersion'>{this.props.extension.get('version')}</span>
         {
-          !['__MSG_extDescriptionGoogleChrome__', '__MSG_appDesc__'].includes(this.props.extension.get('description'))
+          this.props.extension.get('description') !== '__MSG_appDesc__'
           ? <div className='extensionDescription'>{bravifyText(this.props.extension.get('description'))}</div>
           : null
         }

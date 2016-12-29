@@ -19,27 +19,14 @@ class LongPressButton extends ImmutableComponent {
     if (e.target.attributes.getNamedItem('disabled')) {
       return
     }
-    if (e && e.preventDefault) {
-      e.preventDefault()
-    }
-    if (e && e.stopPropagation) {
-      e.stopPropagation()
-    }
 
     const self = this
-    const target = e.target
+    const rect = e.target.getBoundingClientRect()
     const LONG_PRESS_MILLISECONDS = 300
 
-    // Right click should immediately trigger the action
-    if (e.button === 2) {
-      self.props.onLongPress(target)
-      return
-    }
-
-    // Otherwise, it should wait before triggering
     this.longPressTimer = setTimeout(function () {
       self.isLocked = true
-      self.props.onLongPress(target)
+      self.props.onLongPress(rect)
     }, LONG_PRESS_MILLISECONDS)
   }
 
@@ -62,13 +49,11 @@ class LongPressButton extends ImmutableComponent {
       this.isLocked = false
       return
     }
-    if (this.props.onClick) {
-      this.props.onClick(e)
-    }
+    this.props.onClick(e)
   }
 
   render () {
-    return <button data-l10n-id={this.props.l10nId}
+    return <span data-l10n-id={this.props.l10nId}
       className={this.props.className}
       disabled={this.props.disabled}
       onClick={this.onClick}
