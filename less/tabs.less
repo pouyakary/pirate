@@ -4,6 +4,8 @@
 
 @import "variables.less";
 
+@tab-border-color: #A9A9A9;
+
 .tabs {
   background: @tabsBackground;
   box-sizing: border-box;
@@ -49,7 +51,7 @@
   box-sizing: border-box;
   color: #3B3B3B;
   display: flex;
-  height: 25px;
+  height: @tabsToolbarHeight + 2px;
   margin-top: -1px;
   transition: transform 200ms ease;
   left: 0;
@@ -59,8 +61,8 @@
   text-align: center;
   justify-content: center;
   //border: 1px solid transparent;
-  border: 1px solid transparent;
-  border-right-color: #bbb;
+  border: 1pt solid transparent;
+  border-right-color: @tab-border-color;
   padding-left: 4px;
 
   .tabTitle {
@@ -75,6 +77,7 @@
     vertical-align: middle;
     width: calc(~'100% - 40px');
     height: 15px;
+    margin-top: -1px
   }
 
   .tabIcon {
@@ -85,7 +88,7 @@
     margin-left: 4px;
     margin-right: 4px;
     text-align: center;
-    margin-top: 0;
+    margin-top: 0px;
   }
 
   .privateIcon {
@@ -256,7 +259,7 @@
   display: flex;
   height: @tabsToolbarHeight;
   -webkit-user-select: none;
-  border-bottom: 1pt solid #A9A9A9;
+  border-bottom: 1pt solid @tab-border-color;
 }
 
 .tabsToolbarButtons {
@@ -379,4 +382,8 @@
 .segmentedControl > div.selected {
   color: white;
   background: @braveOrange;
+}
+
+.newFrameButton {
+  margin-top: 1px !important;
 }
