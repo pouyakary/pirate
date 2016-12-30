@@ -1,4 +1,6 @@
 
+<img src="https://cloud.githubusercontent.com/assets/2157285/21565563/d96b911e-ceae-11e6-8904-8eb1709f7703.png" width="70">
+
 # Braver
 Braver is a tiny fork of [Brave](www.brave.com)'s [desktop browser](https://github.com/brave/browser-laptop) containing what I want in my browser. Most changes will probably not be accepted by the brave team so I maintain a separate fork to myself.
 
