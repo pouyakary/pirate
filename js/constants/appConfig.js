@@ -10,7 +10,7 @@ const crashURL = process.env.BRAVE_CRASH_URL || 'https://brave-laptop-updates.he
 const adHost = process.env.AD_HOST || 'https://oip.brave.com'
 
 module.exports = {
-  name: 'Brave',
+  name: 'Braver',
   contactUrl: 'mailto:support+laptop@brave.com',
   quitTimeout: 10 * 1000,
   resourceNames: {
