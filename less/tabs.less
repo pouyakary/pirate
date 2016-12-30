@@ -49,15 +49,18 @@
   box-sizing: border-box;
   color: #3B3B3B;
   display: flex;
-  height: 22px;
-  margin: 0;
+  height: 25px;
+  margin-top: -1px;
   transition: transform 200ms ease;
   left: 0;
   opacity: 1.0;
   width: 100%;
   align-items: center;
+  text-align: center;
   justify-content: center;
+  //border: 1px solid transparent;
   border: 1px solid transparent;
+  border-right-color: #bbb;
   padding-left: 4px;
 
   .tabTitle {
@@ -118,13 +121,8 @@
   &.active {
       //background: linear-gradient(to bottom, white, @chromePrimary);
       background: #f4f4f4;
-      height: 24px;
-      margin-top: -1px;
       box-shadow: inset 1px 1px 2px 0px white;
       box-shadow: 0px -1px 4px 0px rgba(51, 51, 51, 0.12);
-      border: 1px solid #bbb;
-      border-bottom: none;
-      border-top: none;
       //border-bottom: 1px;
   }
 
@@ -143,10 +141,6 @@
   }
 
   &:hover {
-    margin-top: -1px;
-    height: 24px;
-    border-top: 1px solid transparent;
-
     .closeTab {
       opacity: 0.5;
     }
@@ -159,7 +153,6 @@
   &:not(.active):hover {
     //background: linear-gradient(to bottom, white, @chromePrimary);
     background: #f4f4f4;
-    border-right-color: transparent;
     &.private {
       background: lighten(@privateTabBackground, 20%);
     }
@@ -180,6 +173,7 @@
     height: 16px;
     margin-left: 4px;
     margin-right: 4px;
+    margin-top: 1px;
 
     &:hover {
       opacity: 1;
@@ -200,7 +194,7 @@
   // There's a special case that tabs should span the full width
   // if there are a full set of them.
   &:not(.partOfFullPageSet) {
-    max-width: 184px;
+    //max-width: 184px;
   }
 
 
@@ -265,7 +259,7 @@
 }
 
 .tabsToolbarButtons {
-  margin-top: 1pt;
+  margin-top: 2px;
   background: @tabsBackground;
   //padding-right: 2px;
   .browserButton {
@@ -336,7 +330,7 @@
     line-height: 17px !important;
     text-align: center;
     vertical-align: top;
-    margin-top: 2px;
+    margin-top: 3px;
     margin-left: -5px;
     margin-right: -5px;
     width: 30px;
@@ -346,8 +340,7 @@
     background: @tabsBackground;
 
     &:hover {
-  //    background: lighten(#eeeeee, 10%);
-            color: white;
+        color: black;
     }
   }
 }
@@ -362,10 +355,6 @@
   background: linear-gradient(to left, #afb0b4, #cccccc);
   border-bottom-right-radius: 0;
   border-top-right-radius: @borderRadius;
-}
-
-.pinnedTabs {
-  margin-left: 9px;
 }
 
 .segmentedControl {
