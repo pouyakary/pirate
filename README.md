@@ -18,6 +18,14 @@ My version (Braver) has a tab bar much more like in Safari. More than changing t
 <img width="1183" alt="screen shot 2016-12-30 at 2 38 20 pm" src="https://cloud.githubusercontent.com/assets/2157285/21564455/18fefe8a-cea3-11e6-9b34-bb3ed888126d.png">
 
 # Technical
+## Building Braver
+In order to build the braver you can run this command:
+```shell
+npm run build-braver 
+```
+__NOTE__ this only builds for x86 macOS and in a dev channel. If you wish to change settings in any manner you should modify `tools/build-braver.sh`
+
+## Developing Braver
 For Technical information on how to setup the environment, build, test and other stuff. Please read these articles from the main repo of Brave:
 
 - [Build prerequisites](https://github.com/brave/browser-laptop/blob/master/README.md#build-prerequisites)
