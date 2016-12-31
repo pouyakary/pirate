@@ -144,20 +144,22 @@
   }
 
   &:hover {
+    transition: 0.2s;
     background-color: #F4F4F4;
-    transition-duration: 1s;
     .closeTab {
       opacity: 0.5;
     }
 
     .thumbnail {
+      transition: 0.2s;
       display: block;
     }
   }
 
   &:not(.active):hover {
     //background: linear-gradient(to bottom, white, @chromePrimary);
-    background: #CACACA;
+    //transition: 0.2s;
+    background-color: #CACACA;
     &.private {
       background: lighten(@privateTabBackground, 20%);
     }
