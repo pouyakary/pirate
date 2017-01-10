@@ -11,11 +11,11 @@ Changes are and shall be mostly towards UI. A brief change list is provided here
 ## Tabs
 Tabs are the first things that I changed within the brave. Current version of Brave has a tab bar like this:
 
-<img width="1090" alt="screen shot 2016-12-30 at 2 39 19 pm" src="https://cloud.githubusercontent.com/assets/2157285/21564456/19355174-cea3-11e6-97eb-44a21bb3c9e5.png">
+<img width="1108" alt="screen shot 2017-01-10 at 8 21 37 pm" src="https://cloud.githubusercontent.com/assets/2157285/21816129/3b9c0dbe-d774-11e6-9886-cf2bc5950ad9.png">
 
 My version (Pirate) has a tab bar much more like in Safari. More than changing the very shape it has pixel-perfect design fixes for the previous version.
 
-<img width="1183" alt="screen shot 2016-12-30 at 2 38 20 pm" src="https://cloud.githubusercontent.com/assets/2157285/21564455/18fefe8a-cea3-11e6-9b34-bb3ed888126d.png">
+<img width="1097" alt="screen shot 2017-01-10 at 8 23 06 pm" src="https://cloud.githubusercontent.com/assets/2157285/21816130/3bcfae62-d774-11e6-884b-694a3e5c8ade.png">
 
 # Technical
 ## Building Pirate
