@@ -7,7 +7,7 @@
     "port": "8080"
   },
   "scripts": {
-    "build-braver": "bash ./tools/build-braver.sh",
+    "build-pirate": "bash ./tools/build-pirate.sh",
     "build-installer": "node ./tools/buildInstaller.js",
     "build-package": "node ./tools/buildPackage.js",
     "check-security": "nsp check",
