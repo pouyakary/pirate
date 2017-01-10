@@ -11,8 +11,8 @@ module.exports.showAbout = function () {
   // while the dialog is displayed.
   setTimeout(() => {
     dialog.showMessageBox({
-      title: 'Braver',
-      message: `Braver: ${app.getVersion()}
+      title: 'Pirate',
+      message: `Pirate: ${app.getVersion()}
 Electron: ${process.versions['atom-shell']}
 libchromiumcontent: ${process.versions['chrome']}
 V8: ${process.versions.v8}
@@ -32,7 +32,7 @@ module.exports.showImportWarning = function () {
   // while the dialog is displayed.
   setTimeout(() => {
     dialog.showMessageBox({
-      title: 'Braver',
+      title: 'Pirate',
       message: `${locale.translation('closeFirefoxWarning')}`,
       icon: path.join(__dirname, '..', 'app', 'extensions', 'brave', 'img', 'braveAbout.png'),
       buttons: [locale.translation('closeFirefoxWarningOk')]
@@ -46,7 +46,7 @@ module.exports.showImportSuccess = function () {
   // while the dialog is displayed.
   setTimeout(() => {
     dialog.showMessageBox({
-      title: 'Braver',
+      title: 'Pirate',
       message: `${locale.translation('importSuccess')}`,
       icon: path.join(__dirname, '..', 'app', 'extensions', 'brave', 'img', 'braveAbout.png'),
       buttons: [locale.translation('importSuccessOk')]

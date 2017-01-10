@@ -16,7 +16,7 @@ const cx = require('../lib/classSet')
 const messages = require('../constants/messages')
 const siteUtil = require('../state/siteUtil')
 
-class BraveryPanel extends ImmutableComponent {
+class PirateyPanel extends ImmutableComponent {
   constructor () {
     super()
     this.onToggleSiteSetting = this.onToggleSiteSetting.bind(this)
@@ -96,7 +96,7 @@ class BraveryPanel extends ImmutableComponent {
     return this.redirectedResources && this.redirectedResources.size > 0
   }
   onToggleAdsAndTracking (e) {
-    windowActions.setBraveryPanelDetail({
+    windowActions.setPirateyPanelDetail({
       expandAdblock: !this.isBlockedAdsShown
     })
     e.stopPropagation()
@@ -107,25 +107,25 @@ class BraveryPanel extends ImmutableComponent {
       // Display full list of rulesets in console for debugging
       console.log('httpse rulesets', JSON.stringify(this.redirectedResources.toJS()))
     }
-    windowActions.setBraveryPanelDetail({
+    windowActions.setPirateyPanelDetail({
       expandHttpse: !this.isHttpseShown
     })
     e.stopPropagation()
   }
   onToggleFpList (e) {
-    windowActions.setBraveryPanelDetail({
+    windowActions.setPirateyPanelDetail({
       expandFp: !this.isFpShown
     })
     e.stopPropagation()
   }
   onToggleNoScriptList (e) {
-    windowActions.setBraveryPanelDetail({
+    windowActions.setPirateyPanelDetail({
       expandNoScript: !this.isBlockedScriptsShown
     })
     e.stopPropagation()
   }
   onToggleAdvanced () {
-    windowActions.setBraveryPanelDetail({
+    windowActions.setPirateyPanelDetail({
       advancedControls: !this.isAdvancedExpanded
     })
   }
@@ -305,7 +305,7 @@ class BraveryPanel extends ImmutableComponent {
           }
           <hr className='braveryBottomSplitter' />
           <div className='braveryPanelFooter'>
-            <span className='clickable' onClick={this.onEditGlobal} data-l10n-id='editBraveryGlobalSettings' />
+            <span className='clickable' onClick={this.onEditGlobal} data-l10n-id='editPirateyGlobalSettings' />
             <span className='reloadButton clickable' onClick={this.onReload}>
               <div className='reloadText' data-l10n-id='reload' />
               <div className='fa fa-repeat' />
@@ -317,4 +317,4 @@ class BraveryPanel extends ImmutableComponent {
   }
 }
 
-module.exports = BraveryPanel
+module.exports = PirateyPanel

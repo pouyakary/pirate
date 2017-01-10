@@ -61,7 +61,7 @@ class Frame extends ImmutableComponent {
     return siteSettings.braveryDefaults(appStoreRenderer.state, appConfig)
   }
 
-  get frameBraverySettings () {
+  get framePirateySettings () {
     const frameSiteSettings =
       siteSettings.getSiteSettingsForURL(this.props.allSiteSettings, this.props.location)
     return Immutable.fromJS(siteSettings.activeSettings(frameSiteSettings,
@@ -1096,7 +1096,7 @@ class Frame extends ImmutableComponent {
   }
 
   getWebRTCPolicy () {
-    const braverySettings = this.frameBraverySettings
+    const braverySettings = this.framePirateySettings
     if (!braverySettings || braverySettings.get('fingerprintingProtection') !== true) {
       return WEBRTC_DEFAULT
     } else {

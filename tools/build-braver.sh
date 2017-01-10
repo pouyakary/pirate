@@ -28,7 +28,7 @@
 # ─── RENAME BUNDLE ──────────────────────────────────────────────────────────────
 #
 
-    mv ./Brave-darwin-x64/Brave.app ./Brave-darwin-x64/Braver.app
+    mv ./Brave-darwin-x64/Brave.app ./Brave-darwin-x64/Pirate.app
 
 # ────────────────────────────────────────────────────────────────────────────────
 

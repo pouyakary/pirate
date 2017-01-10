@@ -1,7 +1,7 @@
 {
   "name": "braver",
   "version": "0.12.4",
-  "description": "Braver: A broweser better than Brave!",
+  "description": "Pirate: A broweser better than Brave!",
   "main": "./app/index.js",
   "config": {
     "port": "8080"
