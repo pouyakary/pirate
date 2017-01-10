@@ -7,11 +7,10 @@
 @tab-border-color: #A9A9A9;
 @tab-hover-color: #F1F1F1;
 
-.tabs {
+.tabs, .pinnedTabs {
   background: @tabsBackground;
   box-sizing: border-box;
   display: flex;
-  flex: 1;
   overflow: auto;
   height: @tabsToolbarHeight;
   position: relative;
@@ -19,6 +18,10 @@
   z-index: @zindexTabs;
   padding: 0 4px 0 0  ;
 } 
+
+.tabs {
+  flex: 1;
+}
 
 .tabStripContainer {
   display: flex;
@@ -158,6 +161,15 @@
     }
   }
 
+  &.isPinned {
+    .thumbnail {
+      margin: auto;
+      padding: 0;
+    }
+    padding: 0 6pt 0 6pt;
+    margin-left: 0;
+  }
+
   &:not(.active):hover {
     //background: linear-gradient(to bottom, white, @chromePrimary);
     //transition: 0.2s;
@@ -208,6 +220,7 @@
 
 
   &:first-child {
+    padding-left: -1pt;
     .active {
       border-left-color: transparent;
     }
