@@ -27,7 +27,7 @@ const DownloadsBar = require('./downloadsBar')
 const Button = require('./button')
 const BrowserActionButton = require('../../app/renderer/components/browserActionButton')
 const SiteInfo = require('./siteInfo')
-const PirateyPanel = require('./braveryPanel')
+const FearlessnessPanel = require('./braveryPanel')
 const ClearBrowsingDataPanel = require('./clearBrowsingDataPanel')
 const ImportBrowserDataPanel = require('../../app/renderer/components/importBrowserDataPanel')
 const AutofillAddressPanel = require('./autofillAddressPanel')
@@ -84,7 +84,7 @@ class Main extends ImmutableComponent {
     this.onDragOver = this.onDragOver.bind(this)
     this.onDrop = this.onDrop.bind(this)
     this.onHideSiteInfo = this.onHideSiteInfo.bind(this)
-    this.onHidePirateyPanel = this.onHidePirateyPanel.bind(this)
+    this.onHideFearlessnessPanel = this.onHideFearlessnessPanel.bind(this)
     this.onHideClearBrowsingDataPanel = this.onHideClearBrowsingDataPanel.bind(this)
     this.onHideImportBrowserDataPanel = this.onHideImportBrowserDataPanel.bind(this)
     this.onHideAutofillAddressPanel = this.onHideAutofillAddressPanel.bind(this)
@@ -568,7 +568,7 @@ class Main extends ImmutableComponent {
 
   onBraveMenu () {
     if (!this.braveShieldsDisabled) {
-      windowActions.setPirateyPanelDetail({})
+      windowActions.setFearlessnessPanelDetail({})
     }
   }
 
@@ -581,8 +581,8 @@ class Main extends ImmutableComponent {
     windowActions.setSiteInfoVisible(false)
   }
 
-  onHidePirateyPanel () {
-    windowActions.setPirateyPanelDetail()
+  onHideFearlessnessPanel () {
+    windowActions.setFearlessnessPanelDetail()
   }
 
   onHideClearBrowsingDataPanel () {
@@ -719,7 +719,7 @@ class Main extends ImmutableComponent {
     return siteSettings.getSiteSettingsForURL(this.allSiteSettings, location)
   }
 
-  framePirateySettings (location) {
+  frameFearlessnessSettings (location) {
     return Immutable.fromJS(siteSettings.activeSettings(this.frameSiteSettings(location),
                                                         this.props.appState,
                                                         appConfig))
@@ -943,12 +943,12 @@ class Main extends ImmutableComponent {
         }
         {
           braveryPanelIsVisible
-          ? <PirateyPanel frameProps={activeFrame}
+          ? <FearlessnessPanel frameProps={activeFrame}
             activeRequestedLocation={activeRequestedLocation}
             braveryPanelDetail={this.props.windowState.get('braveryPanelDetail')}
             braverySettings={braverySettings}
             activeSiteSettings={activeSiteSettings}
-            onHide={this.onHidePirateyPanel} />
+            onHide={this.onHideFearlessnessPanel} />
           : null
         }
         {

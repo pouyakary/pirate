@@ -859,7 +859,7 @@ const windowActions = {
    * @param {Object} braveryPanelDetail - Details about how to show the bravery panel.
    *   Set to undefined to hide the panel.  See state documentation for more info.
    */
-  setPirateyPanelDetail: function (braveryPanelDetail) {
+  setFearlessnessPanelDetail: function (braveryPanelDetail) {
     dispatch({
       actionType: WindowConstants.WINDOW_SET_BRAVERY_PANEL_DETAIL,
       braveryPanelDetail

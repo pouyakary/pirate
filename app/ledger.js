@@ -1215,7 +1215,7 @@ var getPaymentInfo = () => {
   if (!client) return
 
   try {
-    ledgerInfo.bravery = client.getPirateyProperties()
+    ledgerInfo.bravery = client.getFearlessnessProperties()
     if (ledgerInfo.bravery.fee) {
       amount = ledgerInfo.bravery.fee.amount
       currency = ledgerInfo.bravery.fee.currency
@@ -1251,7 +1251,7 @@ var setPaymentInfo = (amount) => {
 
   if (!client) return
 
-  try { bravery = client.getPirateyProperties() } catch (ex) {
+  try { bravery = client.getFearlessnessProperties() } catch (ex) {
 // wallet being created...
 
     return setTimeout(function () { setPaymentInfo(amount) }, 2 * msecs.second)
@@ -1261,8 +1261,8 @@ var setPaymentInfo = (amount) => {
   if (isNaN(amount) || (amount <= 0)) return
 
   underscore.extend(bravery.fee, { amount: amount })
-  client.setPirateyProperties(bravery, (err, result) => {
-    if (err) return console.log('ledger setPirateyProperties: ' + err.toString())
+  client.setFearlessnessProperties(bravery, (err, result) => {
+    if (err) return console.log('ledger setFearlessnessProperties: ' + err.toString())
 
     if (result) syncWriter(pathName(statePath), result, () => {})
   })

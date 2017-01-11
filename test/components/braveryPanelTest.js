@@ -5,7 +5,7 @@ const messages = require('../../js/constants/messages')
 const {urlInput, braveMenu, braveMenuDisabled, adsBlockedStat, braveryPanel, httpsEverywhereStat, noScriptStat, noScriptSwitch, fpSwitch, fpStat, noScriptNavButton} = require('../lib/selectors')
 const {getTargetAboutUrl} = require('../../js/lib/appUrlUtil')
 
-describe('Piratey Panel', function () {
+describe('Fearlessness Panel', function () {
   function * setup (client) {
     yield client
       .waitUntilWindowLoaded()

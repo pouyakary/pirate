@@ -651,7 +651,7 @@ Dispatches a message to indicate the site info, such as # of blocked ads, should
 
 
 
-### setPirateyPanelDetail(braveryPanelDetail) 
+### setFearlessnessPanelDetail(braveryPanelDetail) 
 
 Dispatches a message to indicate the bravery panel should be shown
 

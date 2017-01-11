@@ -177,7 +177,7 @@
 - Added optional Shift for zoom in shortcut. ([#2685](https://github.com/brave/browser-laptop/issues/2685))
 - Added Run `<noscript>` tag when noscript is active. ([#2671](https://github.com/brave/browser-laptop/issues/2671))
 - Added smoother animations. ([#2765](https://github.com/brave/browser-laptop/issues/2765))
-- Added Piratey top level menu. ([#2669](https://github.com/brave/browser-laptop/issues/2669))
+- Added Fearlessness top level menu. ([#2669](https://github.com/brave/browser-laptop/issues/2669))
 - Added restart dialog for prefs that require restart. ([#2543](https://github.com/brave/browser-laptop/issues/2543))
 - Added search image on context menu if default engine is google. ([#2606](https://github.com/brave/browser-laptop/issues/2606))
 - Added a way to view SSL certificates when there is an error. ([#1057](https://github.com/brave/browser-laptop/issues/1057))
@@ -264,9 +264,9 @@
 - Fixed crash on Windows when clicking on certain link types. ([#2064](https://github.com/brave/browser-laptop/issues/2064))
 
 ## [0.10.1](https://github.com/brave/browser-laptop/releases/v0.10.1dev)
-- Included fingerprinting protection into the Piratey Panel. ([#1876](https://github.com/brave/browser-laptop/issues/1876))
+- Included fingerprinting protection into the Fearlessness Panel. ([#1876](https://github.com/brave/browser-laptop/issues/1876))
 - Added protection for AudioContext fingerprinting. ([#1884](https://github.com/brave/browser-laptop/issues/1884))
-- Added number of scripts blocked to the Piratey panel. ([#1833](https://github.com/brave/browser-laptop/issues/1833))
+- Added number of scripts blocked to the Fearlessness panel. ([#1833](https://github.com/brave/browser-laptop/issues/1833))
 - Added support for bookmarklets. ([#1880](https://github.com/brave/browser-laptop/issues/1880))
 - Added show only favicon option to the bookmarks toolbar. ([#1657](https://github.com/brave/browser-laptop/issues/1657))
 - Added bookmark tooltips. ([#1848](https://github.com/brave/browser-laptop/issues/1848))
@@ -290,8 +290,8 @@
 - [Various other fixes.](https://github.com/brave/browser-laptop/milestones/0.10.1dev)
 
 ## [0.10.0](https://github.com/brave/browser-laptop/releases/v0.10.0dev)
-- Per site Piratey panel and per site settings. ([#1621](https://github.com/brave/browser-laptop/issues/1621))
-- Piratey setting defaults now in preferences. ([#1818](https://github.com/brave/browser-laptop/issues/1818))
+- Per site Fearlessness panel and per site settings. ([#1621](https://github.com/brave/browser-laptop/issues/1621))
+- Fearlessness setting defaults now in preferences. ([#1818](https://github.com/brave/browser-laptop/issues/1818))
 - Implemented error pages. ([#1611](https://github.com/brave/browser-laptop/issues/1611))
 - Lazy load tabs on startup. ([#470](https://github.com/brave/browser-laptop/issues/470))
 - Added search for selected text context menu. ([#1672](https://github.com/brave/browser-laptop/pull/1672))
@@ -514,7 +514,7 @@
 - Security fix (Severity: High): Prevent BrowserWindow from navigating to remote content ([#445](https://github.com/brave/browser-laptop/issues/445)). Impact: if the user is tricked into dragging and dropping a malicious link outside of the tab content area, the linked site is loaded outside the webview sandbox and can compromise the user's system.
 - Dropped URLs now open tabs instead of opening inside the whole window.
 - Fixed a tracking protection problem causing some top level sites to not load.
-- Piratey menu options are now easier to understand.
+- Fearlessness menu options are now easier to understand.
 - Context menus re-ordered by importance.
 - Various Windows shortcuts added.
 - Mouse middle click on a tab now closes the tab.
