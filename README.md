@@ -21,7 +21,7 @@ My version (Pirate) has a tab bar much more like in Safari. More than changing t
 ## Building Pirate
 In order to build the braver you can run this command:
 ```shell
-npm run build-braver 
+npm run build-pirate 
 ```
 __NOTE__ this only builds for x86 macOS and in a dev channel. If you wish to change settings in any manner you should modify `tools/build-braver.sh`
 
