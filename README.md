@@ -19,11 +19,11 @@ My version (Pirate) has a tab bar much more like in Safari. More than changing t
 
 # Technical
 ## Building Pirate
-In order to build the braver you can run this command:
+In order to build the Pirate you can run this command:
 ```shell
 npm run build-pirate 
 ```
-__NOTE__ this only builds for x86 macOS and in a dev channel. If you wish to change settings in any manner you should modify `tools/build-braver.sh`
+__NOTE__ this only builds for x86 macOS and in a dev channel. If you wish to change settings in any manner you should modify `tools/build-pirate.sh`
 
 ## Developing Pirate
 For Technical information on how to setup the environment, build, test and other stuff. Please read these articles from the main repo of Brave:
@@ -38,4 +38,4 @@ And for more docs please check out [this folder](https://github.com/brave/browse
 Brave is open source software under MPL which means having a fork is acceptable, however due to my respect towards the Brave brand's trademark I have changed the name to Pirate so that it both respects the brand and it's trademark and still keeps it's relation to the original browser.
 
 # Thanks
-Thanks a lot to the brave team for the great browser. 
+Thanks a lot to the Brave team for the great browser. 
